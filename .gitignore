@@ -1,7 +1,32 @@
-logs/
-*.log
+# Virtual Environment
+.venv/
+venv/
+
+# Python
 __pycache__/
 *.py[cod]
-.venv/
-.env
 *.pyc
+
+# IDE
+.idea/
+.vscode/
+
+# Environment variables
+.env
+
+# Test artifacts
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Allure
+allure-results/
+allure-report/
+
+# Logs
+logs/
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
