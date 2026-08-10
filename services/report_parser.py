@@ -4,6 +4,40 @@ import re
 class ReportParser:
 
     @staticmethod
+    def parse_dosing_channels(report: str):
+
+        matches = re.finditer(
+            r"Dosing Channel:\s*(\d+),.*?"
+            r"Plan amount:\s*(\d+).*?"
+            r"Method:\s*(\w+).*?"
+            r"Units:\s*(\w+).*?"
+            r"Flow:\s*(\d+).*?"
+            r"delivered quantity:\s*(\d+).*?"
+            r"delivered time:\s*(\d+).*?"
+            r"remain quantity:\s*(\d+).*?"
+            r"remain time:\s*(\d+)",
+            report,
+            re.DOTALL,
+        )
+
+        channels = {}
+
+        for match in matches:
+            channel_id = int(match.group(1))
+            channels[channel_id] = {
+                "plan_amount": int(match.group(2)),
+                "method": match.group(3),
+                "units": match.group(4),
+                "flow": int(match.group(5)),
+                "delivered_quantity": int(match.group(6)),
+                "delivered_time": int(match.group(7)),
+                "remain_quantity": int(match.group(8)),
+                "remain_time": int(match.group(9)),
+            }
+
+        return channels
+
+    @staticmethod
     def parse_completed_report(report: str):
 
         water_match = re.search(

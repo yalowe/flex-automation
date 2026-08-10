@@ -177,7 +177,11 @@ def main():
     irrigation = IrrigationService(controller)
     config = FlexConfigService(controller)
 
-    e2e_tests = ProgramsAndDosings(irrigation=irrigation, config=config)
+    e2e_tests = ProgramsAndDosings(
+        irrigation=irrigation,
+        config=config,
+        fail_on_anomalies=True,
+    )
 
     try:
         run_nightly(e2e_tests)

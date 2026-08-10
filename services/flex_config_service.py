@@ -3,7 +3,7 @@ from parsers.shift_parser import ShiftParser
 
 from calculators.flex_calculator import FlexCalculator
 from parsers.recipe_parser import RecipeParser
-from calculators.flex_device_model import DOSING_FLOWS
+import re
 
 
 class FlexConfigService:
@@ -17,17 +17,102 @@ class FlexConfigService:
 
         return DOParser.parse(result.response)
 
+    def get_dosing_channel_flows(self):
+
+        result = self.controller.send("irrdomap info")
+
+        flows = {}
+
+        for line in result.response.splitlines():
+            parts = [part.strip() for part in line.split("|")]
+
+            if len(parts) < 5:
+                continue
+
+            device_name = parts[1] if len(parts) > 1 else ""
+            nominal_flow = self._safe_int(parts[4]) if len(parts) > 4 else 0
+            match = re.match(r"Dosing CH\s+(\d+)", device_name)
+
+            if not match:
+                continue
+
+            channel_id = int(match.group(1))
+            flows[channel_id] = nominal_flow / 100
+
+        return flows
+
     def shifts_info(self, program_id: int):
 
         result = self.controller.send("shift info")
 
         return ShiftParser.parse_program(result.response, program_id)
 
+    def program_info(self, program_id: int):
+
+        result = self.controller.send("IrrProg Info")
+
+        for line in result.response.splitlines():
+            row_match = re.match(r"\s*(\d+)\|", line)
+
+            if not row_match:
+                continue
+
+            if int(row_match.group(1)) != program_id:
+                continue
+
+            parts = [part.strip() for part in line.split("|")]
+
+            return {
+                "program_type": parts[1] if len(parts) > 1 else None,
+                "program_units": parts[5] if len(parts) > 5 else None,
+                "water_before": self._safe_int(parts[6]) if len(parts) > 6 else 0,
+                "water_after": self._safe_int(parts[7]) if len(parts) > 7 else 0,
+            }
+
+        return {
+            "program_type": None,
+            "program_units": None,
+            "water_before": 0,
+            "water_after": 0,
+        }
+
+    def di_map_info(self):
+
+        result = self.controller.send("IrrDIMap Info")
+
+        water_meter_rate = None
+        dosing_meter_rates = {}
+
+        for line in result.response.splitlines():
+            parts = [part.strip() for part in line.split("|")]
+
+            if len(parts) < 5:
+                continue
+
+            device_name = parts[1] if len(parts) > 1 else ""
+            rate = self._safe_int(parts[4]) if len(parts) > 4 else 0
+
+            if device_name == "Main WaterMeter":
+                water_meter_rate = rate
+                continue
+
+            meter_match = re.match(r"Dosing Meter\s+(\d+)", device_name)
+            if meter_match:
+                dosing_meter_rates[int(meter_match.group(1))] = rate
+
+        return {
+            "water_meter_rate": water_meter_rate,
+            "dosing_meter_rates": dosing_meter_rates,
+        }
+
     def get_program_configuration(self, program_id):
 
         valve_flows = self.get_valve_flows()
+        dosing_channel_flows = self.get_dosing_channel_flows()
 
         program = self.shifts_info(program_id)
+        program_info = self.program_info(program_id)
+        di_map_info = self.di_map_info()
 
         flow = FlexCalculator.flow_from_valves(
             program["valves"],
@@ -50,19 +135,46 @@ class FlexConfigService:
             if not channel["enabled"]:
                 continue
 
-            dosing_flow = DOSING_FLOWS[channel_id]
+            dosing_flow = dosing_channel_flows.get(channel_id, 0)
 
             dosing_channels[channel_id] = {
                 **channel,
                 "flow": dosing_flow,
                 "dm_cycle": FlexCalculator.dm_cycle_ms(dosing_flow),
+                "dm_rate": di_map_info["dosing_meter_rates"].get(channel_id),
             }
 
         return {
             "program_id": program_id,
+            "shift_id": program["shift_id"],
             "recipe_id": program["recipe_id"],
+            "program_type": program_info["program_type"],
+            "program_units": program_info["program_units"],
+            "water_before": program_info["water_before"],
+            "water_after": program_info["water_after"],
+            "shift_amount": program["amount"],
             "valves": program["valves"],
             "flow": flow,
+            "water_meter_rate": di_map_info["water_meter_rate"],
+            "water_meter_pulse_liters": self._wm_pulse_size_liters(
+                di_map_info["water_meter_rate"]
+            ),
             "wm_cycle": wm_cycle,
             "dosing_channels": dosing_channels,
         }
+
+    @staticmethod
+    def _safe_int(value):
+
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return 0
+
+    @staticmethod
+    def _wm_pulse_size_liters(rate):
+
+        if not rate:
+            return None
+
+        return 1000 / rate

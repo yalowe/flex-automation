@@ -161,8 +161,124 @@ Generated files per run under `logs/<timestamp>/`:
 - `battery_events.txt`
 - `general_events.txt`
 - `anomalies.txt`
+- `scenario_monitoring_summary.txt`
 
 Anomaly flags currently detected:
 - `command_error` (`Status:Error` lines)
 - `battery_recovery_state` (`Battery Recovery` lines)
 - `flow_alarm_pattern` (`No Flow`, `Low Flow`, `High Flow`, `flow mismatch` lines)
+
+Additional monitoring support implemented:
+- Parser for monitor-style event lines: `[HH:MM:SS] valve|wm <id> <action>`
+- WM snapshot extraction from segments like `| wm1=... wm2=...`
+- Pulse count extraction from `count <N>`
+- Scenario delta summary (from scenario start marker to scenario end):
+  - total captured lines
+  - parsed device events
+  - valve open/close counts
+  - WM event count and last WM counts seen
+  - anomaly count and samples
+
+Execution reliability improvements implemented:
+- Scenario completion now waits by polling `IrrRep Print 1 <program_id>` until a real Completed report is available, instead of using only a fixed sleep.
+- `ProgramsAndDosings` supports anomaly-gated execution:
+  - `fail_on_anomalies=True` enables blocking behavior.
+  - anomalies in blocklist (`command_error`, `battery_recovery_state`, `flow_alarm_pattern`) fail the scenario.
+  - current `main.py` enables this mode.
+
+## 10) Verified Controller Behavior (2026-08-02)
+
+- `IrrCmd Set 6 <program_id>` (Complete) did not reliably move Program 3 out of `Running` in observed runs.
+- `IrrCmd Set 3 <program_id>` (Skip Program) did move the controller to idle/finished in observed runs:
+  - `Main Line State: Idle`
+  - `ProgramID: 0`
+  - `Program State: Finished`
+- During restart windows, `IrrRep Print 1 <program_id>` can return stale Completed blocks from the previous run (older `Actual started time`).
+- `IrrRep Print 1 <program_id>` can also return a `Report type: Completed` block while its internal `State` is still `Running`; this should be treated as not finalized.
+- `IrrDIMap Info` exposes live raw rates for the Main WaterMeter and Dosing Meters:
+  - Main WaterMeter: `1000`
+  - Dosing Meter 1: `10`
+  - Dosing Meter 2: `100`
+  - Dosing Meter 3: `1000`
+  - Dosing Meter 4: `10`
+- Main WaterMeter rate `1000` is consistent with the current 1 L/pulse WM-cycle model.
+- Dosing meter rates are discoverable, but their pulse-size unit semantics are not explicitly labeled in the available read-only command output.
+
+## 11) Program 3 Expectation-Engine Verification
+
+Live controller-driven discovery returned:
+- Program 3
+- Shift 1
+- Recipe 1
+- Units: Time
+- Shift amount: `4` minutes
+- Valve flow total: `10.0 m3/h`
+- WM rate: `1000`
+- CH1 dosing method: `Bulk / Time`
+- CH1 dosing amount: `10`
+
+Built expectations from current engine:
+- Expected water: `66667` report units (`666.67` liters)
+- Expected dose: `1667` report units (`1.667` liters)
+
+Observed blocker during E2E validation:
+- The controller kept returning an old finalized completed report for Program 3 with `Actual started time: 23:15:46` while the new run start marker was `23:54:44`.
+- Therefore this run did not produce a trustworthy expected-vs-actual comparison for the current run instance.
+
+Important interpretation:
+- Water expectation math appears structurally consistent with the live config.
+- Dosing expectation is still not trustworthy as a controller-driven value because dosing flow still comes from local static data, not confirmed live controller discovery.
+
+## 12) Proven Controller-Domain Scaling Evidence
+
+Do NOT use one generic scale rule across all FLEX controller numeric fields.
+
+### Dosing Channel NomFlow Domain
+
+Evidence collected:
+- Historical CH1: raw `NomFlow = 1000`; completed-report channel flow observed around `10020`; this aligns with configured flow near `10 L/h`.
+- Current CH1: raw `NomFlow = 30000`; completed-report channel flow observed around `30070`; this aligns with configured flow near `300 L/h`.
+- CH3 evidence: configured `900 L/h` corresponds to raw `NomFlow = 90000`.
+
+Proven working rule for dosing-channel nominal flow:
+- `DosingChannelFlow_LPH = RawNomFlow / 100`
+
+### Irrigation Valve NomFlow Domain
+
+Evidence collected:
+- Valve 1 historical: raw `150000`; irrigation report flow observed around `150300`; this aligns with `1.5 m3/h`.
+- Valve 1 current: raw `1000000`; irrigation report flow observed around `1005000`; this aligns with `10.0 m3/h`.
+
+Proven working rule for irrigation-valve nominal flow:
+- `ValveFlow_M3H = RawNomFlow / 100000`
+
+### Water Meter Rate Domain
+
+Evidence collected:
+- Historical `IrrDIMap Info`: Main WaterMeter `Rate = 1000`
+- Current `IrrDIMap Info`: Main WaterMeter `Rate = 1000`
+
+Interpretation status:
+- Stable raw rate is proven.
+- Existing WM cycle model is consistent with interpreting this as `1 L/pulse`.
+- Keep this as a separate domain; do not merge with NomFlow scaling.
+
+### Dosing Meter Rate Domain
+
+Evidence collected:
+- Historical/current `IrrDIMap Info` examples:
+  - DM1 `Rate = 10`
+  - DM2 `Rate = 100`
+  - DM3 `Rate = 1000`
+  - DM4 `Rate = 10`
+
+Interpretation status:
+- Raw controller rates are proven discoverable.
+- Engineering unit semantics are NOT yet proven.
+- Do not derive DM pulse size from these rates until unit meaning is verified.
+
+Handling now implemented in runner:
+- If a run is already active, use `skip_program` first; if still running, keep issuing `skip_shift` until controller leaves `Running`.
+- For completed-report collection, filter by current-run start marker when available.
+- Accept only finalized completed blocks (`State != Running`).
+- If controller is no longer running and only start-time-mismatched finalized blocks are available repeatedly, use latest finalized block to avoid excessive waiting.

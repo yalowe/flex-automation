@@ -14,6 +14,18 @@ class MonitorEvent:
     source_command: str
 
 
+@dataclass
+class ParsedDeviceEvent:
+    timestamp: str
+    device_type: str
+    device_id: int
+    action: str
+    count: int
+    wm_snapshot: dict[int, int]
+    source_command: str
+    raw_line: str
+
+
 class MonitoringService:
     """Collects controller output and stores categorized events per run session."""
 
@@ -31,6 +43,13 @@ class MonitoringService:
     def __init__(self, logs_root: str = "logs"):
         self.logs_root = Path(logs_root)
         self.session_dir: Path | None = None
+        self.monitor_events: list[MonitorEvent] = []
+        self.device_events: list[ParsedDeviceEvent] = []
+        self.anomalies: list[tuple[str, str, str, str]] = []
+        self.event_pattern = re.compile(r"\[(\d{2}:\d{2}:\d{2})\]\s+(valve|wm)\s+(\d+)\s+(.+)")
+        self.nucleo_time_re = re.compile(r" at (\d{2}:\d{2}:\d{2})")
+        self.wm_snapshot_re = re.compile(r"wm(\d+)=(\d+)")
+        self.count_re = re.compile(r"count\s+(\d+)")
 
     def start_session(self) -> Path:
         session_name = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -67,6 +86,15 @@ class MonitoringService:
                 source_command=command,
             )
             events.append(event)
+            self.monitor_events.append(event)
+
+            parsed_device_event = self._parse_device_event(
+                timestamp=timestamp,
+                command=command,
+                line=line,
+            )
+            if parsed_device_event is not None:
+                self.device_events.append(parsed_device_event)
 
             self._append(
                 self.CATEGORY_FILES[category],
@@ -75,12 +103,65 @@ class MonitoringService:
 
             anomaly = self._detect_anomaly(line)
             if anomaly:
+                self.anomalies.append((timestamp, command, anomaly, line))
                 self._append(
                     self.CATEGORY_FILES["anomaly"],
                     f"[{timestamp}] ({command}) {anomaly} | line={line}\n",
                 )
 
         return events
+
+    def mark(self) -> dict[str, int]:
+        return {
+            "monitor_events": len(self.monitor_events),
+            "device_events": len(self.device_events),
+            "anomalies": len(self.anomalies),
+        }
+
+    def summarize_since(self, marker: dict[str, int], scenario_name: str) -> dict:
+        monitor_from = marker.get("monitor_events", 0)
+        device_from = marker.get("device_events", 0)
+        anomaly_from = marker.get("anomalies", 0)
+
+        new_monitor_events = self.monitor_events[monitor_from:]
+        new_device_events = self.device_events[device_from:]
+        new_anomalies = self.anomalies[anomaly_from:]
+
+        valve_open_count = 0
+        valve_close_count = 0
+        wm_event_count = 0
+        wm_last_counts: dict[int, int] = {}
+
+        for event in new_device_events:
+            if event.device_type == "valve":
+                if "open" in event.action:
+                    valve_open_count += 1
+                if "close" in event.action:
+                    valve_close_count += 1
+
+            if event.device_type == "wm":
+                wm_event_count += 1
+                if event.count > 0:
+                    wm_last_counts[event.device_id] = event.count
+
+        summary = {
+            "scenario": scenario_name,
+            "lines": len(new_monitor_events),
+            "device_events": len(new_device_events),
+            "valve_open_count": valve_open_count,
+            "valve_close_count": valve_close_count,
+            "wm_event_count": wm_event_count,
+            "wm_last_counts": wm_last_counts,
+            "anomaly_count": len(new_anomalies),
+            "anomalies": new_anomalies,
+        }
+
+        self._append(
+            "scenario_monitoring_summary.txt",
+            self._format_summary(summary),
+        )
+
+        return summary
 
     def _append(self, filename: str, content: str) -> None:
         if self.session_dir is None:
@@ -128,3 +209,73 @@ class MonitoringService:
             return "flow_alarm_pattern"
 
         return None
+
+    def _parse_device_event(
+        self,
+        timestamp: str,
+        command: str,
+        line: str,
+    ) -> ParsedDeviceEvent | None:
+        match = self.event_pattern.search(line)
+        if not match:
+            return None
+
+        _, device_type, device_id_text, raw_action = match.groups()
+        action_text = raw_action.strip()
+
+        nucleo_time = self.nucleo_time_re.search(action_text)
+        if nucleo_time:
+            action_text = action_text[:nucleo_time.start()].strip()
+
+        wm_snapshot: dict[int, int] = {}
+        if "|" in raw_action:
+            snapshot_part = raw_action[raw_action.index("|") + 1:]
+            for snapshot_match in self.wm_snapshot_re.finditer(snapshot_part):
+                wm_snapshot[int(snapshot_match.group(1))] = int(snapshot_match.group(2))
+
+        count = 0
+        count_match = self.count_re.search(action_text.lower())
+        if count_match:
+            count = int(count_match.group(1))
+
+        return ParsedDeviceEvent(
+            timestamp=timestamp,
+            device_type=device_type.lower(),
+            device_id=int(device_id_text),
+            action=action_text.lower(),
+            count=count,
+            wm_snapshot=wm_snapshot,
+            source_command=command,
+            raw_line=line,
+        )
+
+    @staticmethod
+    def _format_summary(summary: dict) -> str:
+        lines = [
+            "",
+            f"scenario={summary['scenario']}",
+            (
+                "summary "
+                f"lines={summary['lines']} "
+                f"device_events={summary['device_events']} "
+                f"valve_open={summary['valve_open_count']} "
+                f"valve_close={summary['valve_close_count']} "
+                f"wm_events={summary['wm_event_count']} "
+                f"anomalies={summary['anomaly_count']}"
+            ),
+        ]
+
+        if summary["wm_last_counts"]:
+            wm_state = ", ".join(
+                f"wm{wm_id}={count}"
+                for wm_id, count in sorted(summary["wm_last_counts"].items())
+            )
+            lines.append(f"wm_last_counts {wm_state}")
+
+        for anomaly in summary["anomalies"]:
+            timestamp, command, anomaly_type, line = anomaly
+            lines.append(
+                f"anomaly [{timestamp}] ({command}) {anomaly_type} | line={line}"
+            )
+
+        return "\n".join(lines) + "\n"

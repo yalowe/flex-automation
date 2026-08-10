@@ -1,4 +1,3 @@
-from calculators.flex_device_model import VALVE_FLOWS
 class FlexCalculator:
 
     @staticmethod
@@ -26,15 +25,6 @@ class FlexCalculator:
     @staticmethod
     def total_irrigation_flow(flows_m3h: list[float]) -> float:
         return sum(flows_m3h)
-
-    @staticmethod
-    def program_flow(valves: list[int]) -> float:
-
-        total = 0
-
-        for valve in valves:
-            total += VALVE_FLOWS[valve]
-        return total
 
     @staticmethod
     def flow_from_valves(

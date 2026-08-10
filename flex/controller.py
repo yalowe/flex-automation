@@ -46,6 +46,8 @@ class FlexController:
 
         print(f"SENDING => {command}")
 
+        # print("response: \n", response)
+
         success = "Status:OK" in response and "Status:Error" not in response
 
         if self.monitoring_service is not None:
