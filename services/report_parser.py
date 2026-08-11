@@ -102,9 +102,19 @@ class ReportParser:
 
         start = report.rfind("Report type: Completed")
 
+        print("\n[DEBUG][extract_completed_report] raw response:")
+        print(report)
+        print("[DEBUG][extract_completed_report] marker index:")
+        print(start)
+
         if start == -1:
             raise ValueError(
                 "Completed report not found"
             )
 
-        return report[start:]
+        extracted = report[start:]
+
+        print("[DEBUG][extract_completed_report] extracted completed report block:")
+        print(extracted)
+
+        return extracted

@@ -40,7 +40,7 @@ def run_nightly(e2e_tests):
         try:
 
             e2e_tests.run_scenario(
-                PROPORTIONAL_PROGRAM
+                BULK_TIME_TIME_PROGRAM
             )
 
             stats["Proportional"]["pass"] += 1
@@ -64,7 +64,7 @@ def run_nightly(e2e_tests):
         try:
 
             e2e_tests.run_scenario(
-                BULK_TIME_TIME_PROGRAM
+                PROPORTIONAL_PROGRAM
             )
 
             stats["Bulk By Time"]["pass"] += 1
