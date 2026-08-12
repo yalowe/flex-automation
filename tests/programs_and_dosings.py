@@ -44,10 +44,7 @@ class ProgramsAndDosings:
 
         marker = None
         if monitoring is not None:
-            marker = monitoring.mark()
-
-        print(f"\nTest Nmae: {scenario.name}")
-        
+            marker = monitoring.mark()        
 
         config_data = self.config.get_program_configuration(scenario.program_id)
 
@@ -73,7 +70,7 @@ class ProgramsAndDosings:
         # print("\n========== RECIPES INFO ==========")
         # print(self.irrigation.recipes_info().response)
 
-        print("\n==================================\n")
+        # print("\n==================================\n")
 
         if active_program_state == "Running":
             stop_running_program(
@@ -102,9 +99,13 @@ class ProgramsAndDosings:
             )
 
         timeout_sec = estimate_timeout_sec(
-            fallback_wait_sec=scenario.wait_time_sec,
+            config_data=config_data,
+            fallback_wait_sec=getattr(scenario, "wait_time_sec", None),
             program_units=config_data.get("program_units"),
             shift_amount=config_data.get("shift_amount", 0),
+            water_before=config_data.get("water_before", 0),
+            water_after=config_data.get("water_after", 0),
+            flow=config_data.get("flow", 0.0),
         )
 
         print(f"Waiting for completed report (timeout={timeout_sec}s)...")

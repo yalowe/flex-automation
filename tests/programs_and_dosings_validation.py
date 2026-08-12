@@ -42,11 +42,15 @@ def validate_results_from_controller(
     documented_issues = []
 
     if scenario is not None:
-        documented_issues = ExpectationBuilder.compare_documented_expectations(
-            expectations=expectations,
-            documented_water=scenario.expected_water,
-            documented_dosing=scenario.expected_dosing,
-        )
+        documented_water = getattr(scenario, "expected_water", None)
+        documented_dosing = getattr(scenario, "expected_dosing", None)
+
+        if documented_water is not None or documented_dosing is not None:
+            documented_issues = ExpectationBuilder.compare_documented_expectations(
+                expectations=expectations,
+                documented_water=documented_water,
+                documented_dosing=documented_dosing,
+            )
 
     for issue in expectations.get("inconsistencies", []):
         print(issue)
