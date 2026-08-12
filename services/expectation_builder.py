@@ -1,8 +1,42 @@
+"""Dynamic expectation builder for controller-discovered irrigation configuration.
+
+Future configuration-write extension points (not implemented here):
+- services/flex_config_service.py::FlexConfigService.get_program_configuration
+  controller command: "IrrProg Info", "shift info", "recipe info", "IrrDIMap Info", "irrdomap info"
+  supported configuration: valve flow rate, shift flow, water before, water after,
+  water meter configuration, dosing meter configuration, dosing channel nominal flow,
+  recipe configuration
+- flex/controller.py::FlexController.send
+  controller command: firmware write commands such as "Recipe Config", "Recipe Reset",
+  "PR set", "DO Config", "AI Config", "DI Config", "IrrDO Mode"
+  supported configuration: recipe config, parameter writes, digital output config,
+  analog input config, water meter or dosing meter configuration, valve config,
+  proportional ratio, calculated quantity, dosing channel nominal flow
+- services/irrigation_service.py::IrrigationService.*
+  controller command: "IrrCmd Set ...", "IrrRep Print ..."
+  supported configuration: runtime program execution state only; no write paths for
+  controller configuration are implemented in this project yet
+"""
+
+
 class ExpectationBuilder:
     """Build expected controller behavior from runtime-discovered config."""
 
     WATER_REPORT_UNITS_PER_LITER = 100
     DOSING_REPORT_UNITS_PER_LITER = 100
+
+    @staticmethod
+    def _is_quantity_unit(unit_value) -> bool:
+        return (unit_value or "").strip().lower() in {
+            "quant",
+            "qty",
+            "quantity",
+            "depth",
+        }
+
+    @staticmethod
+    def _is_time_unit(unit_value) -> bool:
+        return (unit_value or "").strip().lower() == "time"
 
     @classmethod
     def build(cls, config_data: dict) -> dict:
@@ -17,14 +51,16 @@ class ExpectationBuilder:
         expected_water_report_units = None
         expected_water_liters = None
 
-        if program_units == "time" and shift_amount > 0:
+        if cls._is_time_unit(program_units) and shift_amount > 0:
             runtime_minutes = shift_amount
             expected_water_liters = flow_lph * (runtime_minutes / 60)
             expected_water_report_units = cls.water_report_units_from_liters(
                 expected_water_liters
             )
-        elif program_units == "quant" and shift_amount > 0:
+        elif cls._is_quantity_unit(program_units) and shift_amount > 0:
             expected_water_report_units = shift_amount
+            expected_water_liters = expected_water_report_units / cls.WATER_REPORT_UNITS_PER_LITER
+            runtime_minutes = None
 
         dosing_window_minutes = None
         if runtime_minutes is not None:
@@ -48,9 +84,11 @@ class ExpectationBuilder:
                 channel_id=channel_id,
                 channel=channel,
                 dosing_window_minutes=dosing_window_minutes,
+                runtime_minutes=runtime_minutes,
                 expected_water_liters=expected_water_liters,
                 flow_lph=flow_lph,
                 wm_pulse_size_liters=config_data.get("water_meter_pulse_liters"),
+                program_units=program_units,
             )
             channel_expectations[channel_id] = channel_expectation
 
@@ -82,9 +120,7 @@ class ExpectationBuilder:
                 else None
             ),
             "expected_plan_report_units": (
-                expected_plan_report_units
-                if has_supported_dosing_expectation
-                else None
+                expected_plan_report_units if has_supported_dosing_expectation else None
             ),
             "wm_cycle_ms": config_data.get("wm_cycle"),
             "water_meter_rate": config_data.get("water_meter_rate"),
@@ -99,9 +135,11 @@ class ExpectationBuilder:
         channel_id: int,
         channel: dict,
         dosing_window_minutes,
+        runtime_minutes,
         expected_water_liters,
         flow_lph,
         wm_pulse_size_liters,
+        program_units,
     ) -> dict:
         method = (channel.get("method") or "").strip().lower()
         units = (channel.get("units") or "").strip().lower()
@@ -113,15 +151,22 @@ class ExpectationBuilder:
         pulse_interval_sec = None
         pulse_interval_reason = None
 
-        if method == "bulk" and units == "time" and amount is not None:
-            expected_liters = dosing_flow_lph * (amount / 60)
-            expected_report_units = cls.dosing_report_units_from_liters(
-                expected_liters
-            )
-        elif method == "bulk" and units == "quant" and amount is not None:
-            expected_report_units = amount
+        if method in {"bulk", "spread"} and amount is not None:
+            if cls._is_time_unit(units):
+                expected_liters = dosing_flow_lph * (amount / 60)
+                expected_report_units = cls.dosing_report_units_from_liters(
+                    expected_liters
+                )
+            elif cls._is_quantity_unit(units) or cls._is_quantity_unit(program_units):
+                expected_report_units = amount
         elif method in {"prop", "proportional"} and amount is not None:
             ratio_l_per_m3 = amount / 1000
+            if (
+                expected_water_liters is None
+                and flow_lph > 0
+                and runtime_minutes is not None
+            ):
+                expected_water_liters = flow_lph * (runtime_minutes / 60)
             if expected_water_liters is not None:
                 expected_water_m3 = expected_water_liters / 1000
                 expected_liters = expected_water_m3 * ratio_l_per_m3
@@ -142,6 +187,14 @@ class ExpectationBuilder:
                 pulse_interval_reason = (
                     "Pulse-by-pulse interval unavailable: missing DM pulse size, "
                     "water flow, or proportional ratio"
+                )
+        elif method in {"calculatedquantity", "calculated_quantity", "calcqty"}:
+            if amount is not None:
+                expected_report_units = amount
+            elif dosing_flow_lph > 0 and runtime_minutes is not None:
+                expected_liters = dosing_flow_lph * (runtime_minutes / 60)
+                expected_report_units = cls.dosing_report_units_from_liters(
+                    expected_liters
                 )
         elif method == "spread" and units == "time" and amount is not None:
             if dosing_window_minutes is not None:
@@ -171,7 +224,11 @@ class ExpectationBuilder:
         runtime_minutes = expectations.get("runtime_minutes")
         expected_water_liters = expectations.get("expected_water_liters")
 
-        if flow_m3h > 0 and runtime_minutes is not None and expected_water_liters is not None:
+        if (
+            flow_m3h > 0
+            and runtime_minutes is not None
+            and expected_water_liters is not None
+        ):
             calculated_water_liters = flow_m3h * 1000 * (runtime_minutes / 60)
             if abs(calculated_water_liters - expected_water_liters) > 0.5:
                 issues.append(

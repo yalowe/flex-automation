@@ -5,8 +5,7 @@ from services.monitoring_service import MonitoringService
 
 from tests.programs_and_dosings import ProgramsAndDosings
 
-from services.flex_config_service import (FlexConfigService)
-
+from services.flex_config_service import FlexConfigService
 
 
 from scenarios import (
@@ -15,6 +14,7 @@ from scenarios import (
     PROPORTIONAL_PROGRAM,
     SPREAD_TIME_PROGRAM,
 )
+
 
 def run_nightly(e2e_tests):
 
@@ -34,7 +34,6 @@ def run_nightly(e2e_tests):
         # print(f"FULL RUN #{run_number}")
         print("=" * 100)
 
-    
         try:
 
             e2e_tests.run_scenario(BULK_TIME_TIME_PROGRAM)
@@ -50,7 +49,6 @@ def run_nightly(e2e_tests):
 
         time.sleep(10)
 
-
         try:
 
             e2e_tests.run_scenario(PROPORTIONAL_PROGRAM)
@@ -61,11 +59,10 @@ def run_nightly(e2e_tests):
 
             stats["Bulk By Time"]["fail"] += 1
 
-            print(f"\n❌ BULK_TIME_TIME_PROGRAM FAILED" )
+            print(f"\n❌ BULK_TIME_TIME_PROGRAM FAILED")
             print(ex)
 
         time.sleep(10)
-
 
         try:
 
@@ -81,7 +78,6 @@ def run_nightly(e2e_tests):
             print(ex)
 
         time.sleep(10)
-
 
         try:
 
@@ -125,8 +121,6 @@ def run_nightly(e2e_tests):
         # run_number += 1
 
 
-
-
 def main():
 
     controller = FlexController("COM5")
@@ -136,7 +130,6 @@ def main():
     controller.set_monitoring_service(monitoring)
     controller.connect()
     # calculate_data = FlexConfigService(controller)
-
 
     irrigation = IrrigationService(controller)
     config = FlexConfigService(controller)
@@ -160,8 +153,7 @@ def main():
 
     #     program_data = calculate_data.get_program_configuration(program_id)
 
-    #     print(program_data)  
-
+    #     print(program_data)
 
 
 if __name__ == "__main__":

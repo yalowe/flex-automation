@@ -1,3 +1,23 @@
+"""Validation layer for controller-driven irrigation expectations.
+
+Future configuration-write extension points (not implemented here):
+- services/flex_config_service.py::FlexConfigService.get_program_configuration
+  controller command: "IrrProg Info", "shift info", "recipe info", "IrrDIMap Info", "irrdomap info"
+  supported configuration: valve flow rate, shift flow, water before, water after,
+  water meter configuration, dosing meter configuration, dosing channel nominal flow,
+  recipe configuration
+- flex/controller.py::FlexController.send
+  controller command: firmware write commands such as "Recipe Config", "Recipe Reset",
+  "PR set", "DO Config", "AI Config", "DI Config", "IrrDO Mode"
+  supported configuration: recipe config, parameter writes, digital output config,
+  analog input config, water meter or dosing meter configuration, valve config,
+  proportional ratio, calculated quantity, dosing channel nominal flow
+- services/irrigation_service.py::IrrigationService.run_program and related execution methods
+  controller command: "IrrCmd Set ..."
+  supported configuration: irrigation execution state only; no controller configuration
+  writes are implemented in this project yet
+"""
+
 from services.expectation_builder import ExpectationBuilder
 
 
@@ -22,12 +42,10 @@ def validate_results_from_controller(
     documented_issues = []
 
     if scenario is not None:
-        documented_issues = (
-            ExpectationBuilder.compare_documented_expectations(
-                expectations=expectations,
-                documented_water=scenario.expected_water,
-                documented_dosing=scenario.expected_dosing,
-            )
+        documented_issues = ExpectationBuilder.compare_documented_expectations(
+            expectations=expectations,
+            documented_water=scenario.expected_water,
+            documented_dosing=scenario.expected_dosing,
         )
 
     for issue in expectations.get("inconsistencies", []):
@@ -59,29 +77,41 @@ def validate_results_from_controller(
         )
 
     assert data["water_time"] >= 0, (
-        "Controller-driven validation failed: "
-        "water_time must be non-negative"
+        "Controller-driven validation failed: " "water_time must be non-negative"
     )
 
     active_dosing_channels = config_data.get("dosing_channels", {})
     enabled_channels = [
-        channel
-        for channel in active_dosing_channels.values()
-        if channel.get("enabled")
+        channel for channel in active_dosing_channels.values() if channel.get("enabled")
     ]
 
     if expected_plan is not None:
-        actual_plan = (data["dosing_delivered"] + data["dosing_remaining"])
+        actual_plan = data["dosing_delivered"] + data["dosing_remaining"]
 
-        assert verify_tolerance(actual=actual_plan,
-            expected=expected_plan, tolerance_percent=15,), (
+        assert verify_tolerance(
+            actual=actual_plan,
+            expected=expected_plan,
+            tolerance_percent=15,
+        ), (
             "Controller-driven validation failed: "
             f"dosing_plan={actual_plan} "
             f"expected={expected_plan}"
         )
+    elif expected_dosing is not None:
+        actual_plan = data["dosing_delivered"] + data["dosing_remaining"]
+
+        assert verify_tolerance(
+            actual=actual_plan,
+            expected=expected_dosing,
+            tolerance_percent=15,
+        ), (
+            "Controller-driven validation failed: "
+            f"dosing_plan={actual_plan} "
+            f"expected={expected_dosing}"
+        )
 
     elif enabled_channels:
-        total_dosing = (data["dosing_delivered"] + data["dosing_remaining"])
+        total_dosing = data["dosing_delivered"] + data["dosing_remaining"]
 
         assert total_dosing > 0, (
             "Controller-driven validation failed: "
@@ -89,6 +119,5 @@ def validate_results_from_controller(
         )
 
     assert data["dosing_remaining"] >= 0, (
-        "Controller-driven validation failed: "
-        "dosing_remaining must be non-negative"
+        "Controller-driven validation failed: " "dosing_remaining must be non-negative"
     )

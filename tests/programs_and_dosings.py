@@ -47,31 +47,31 @@ class ProgramsAndDosings:
             marker = monitoring.mark()
 
         print(f"\nTest Nmae: {scenario.name}")
+        
 
         config_data = self.config.get_program_configuration(scenario.program_id)
 
-        print()
-        print("========== PROGRAM CONFIG ==========")
-        print(config_data)
-        print("====================================")
+        # print("========== PROGRAM CONFIG ==========")
+        # print(config_data)
+        # print("====================================")
 
         expectations = ExpectationBuilder.build(config_data)
 
-        print("\n========== EXPECTATIONS ==========")
-        print(expectations)
-        print("==================================")
+        # print("\n========== EXPECTATIONS ==========")
+        # print(expectations)
+        # print("==================================")
 
-        print("\n========== PROGRAMS INFO ==========")
+        # print("\n========== PROGRAMS INFO ==========")
         programs_info = self.irrigation.programs_info().response
-        print(programs_info)
+        # print(programs_info)
 
         active_program_id, active_program_state = extract_active_program_state(programs_info)
 
-        print("\n========== SHIFTS INFO ==========")
-        print(self.irrigation.shifts_info().response)
+        # print("\n========== SHIFTS INFO ==========")
+        # print(self.irrigation.shifts_info().response)
 
-        print("\n========== RECIPES INFO ==========")
-        print(self.irrigation.recipes_info().response)
+        # print("\n========== RECIPES INFO ==========")
+        # print(self.irrigation.recipes_info().response)
 
         print("\n==================================\n")
 

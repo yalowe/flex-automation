@@ -106,7 +106,6 @@ class ReportParser:
 
         extracted = report[start:]
         if extracted != ReportParser._last_report:
-            print("[DEBUG] New completed report detected")
             ReportParser._last_report = extracted
 
         return extracted
