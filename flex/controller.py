@@ -44,7 +44,7 @@ class FlexController:
         while self.serial.in_waiting:
             response += self.serial.readline().decode(errors="ignore")
 
-        print(f"SENDING => {command}")
+        
 
         # print("response: \n", response)
 

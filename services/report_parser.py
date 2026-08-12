@@ -87,34 +87,26 @@ class ReportParser:
     @staticmethod
     def parse_actual_start_time(report: str) -> str | None:
 
-        match = re.search(
-            r"Actual started time:\s*([0-9:]+)",
-            report,
-        )
+        match = re.search(r"Actual started time:\s*([0-9:]+)",report)
 
         if not match:
             return None
 
         return match.group(1)
 
+
+    _last_report = None
     @staticmethod
     def extract_completed_report(report: str) -> str:
-
         start = report.rfind("Report type: Completed")
 
-        print("\n[DEBUG][extract_completed_report] raw response:")
-        print(report)
-        print("[DEBUG][extract_completed_report] marker index:")
-        print(start)
 
         if start == -1:
-            raise ValueError(
-                "Completed report not found"
-            )
+            raise ValueError("Completed report not found")
 
         extracted = report[start:]
-
-        print("[DEBUG][extract_completed_report] extracted completed report block:")
-        print(extracted)
+        if extracted != ReportParser._last_report:
+            print("[DEBUG] New completed report detected")
+            ReportParser._last_report = extracted
 
         return extracted

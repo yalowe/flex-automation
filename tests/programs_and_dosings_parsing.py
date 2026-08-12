@@ -25,31 +25,21 @@ def report_state_is_running(report_text: str) -> bool:
 
     pattern = r"Program Id:\s*\d+.*?State:\s*(\w+)"
 
-    print("\n[DEBUG][report_state_is_running] regex pattern:")
     print(pattern)
-
-    print("[DEBUG][report_state_is_running] report text being parsed:")
     print(report_text)
 
-    match = re.search(
-        pattern,
-        report_text,
-    )
+    match = re.search(pattern, report_text)
 
-    print("[DEBUG][report_state_is_running] regex matched:")
     print(match.group(0) if match else None)
 
     if not match:
-        print("[DEBUG][report_state_is_running] extracted state:")
         print(None)
         return False
 
     extracted_state = match.group(1).strip()
-    print("[DEBUG][report_state_is_running] extracted state:")
     print(extracted_state)
 
     return extracted_state.lower() == "running"
-
 
 def extract_program_units(programs_info: str, program_id: int):
 
@@ -66,15 +56,10 @@ def extract_program_units(programs_info: str, program_id: int):
 
         if len(parts) > 5:
             return parts[5]
-
+        
     return None
 
-
-def estimate_timeout_sec(
-    fallback_wait_sec: int,
-    program_units,
-    shift_amount: int,
-) -> int:
+def estimate_timeout_sec(fallback_wait_sec: int, program_units, shift_amount: int) -> int:
 
     default_timeout = max(fallback_wait_sec + 300, 600)
 

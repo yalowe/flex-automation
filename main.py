@@ -18,7 +18,7 @@ from scenarios import (
 
 def run_nightly(e2e_tests):
 
-    run_number = 1
+    # run_number = 1
 
     stats = {
         "Bulk By Time": {"pass": 0, "fail": 0},
@@ -31,17 +31,13 @@ def run_nightly(e2e_tests):
 
         print("\n")
         print("=" * 100)
-        print(f"FULL RUN #{run_number}")
+        # print(f"FULL RUN #{run_number}")
         print("=" * 100)
 
-        # -------------------------------------------------
-        # Proportional
-        # -------------------------------------------------
+    
         try:
 
-            e2e_tests.run_scenario(
-                BULK_TIME_TIME_PROGRAM
-            )
+            e2e_tests.run_scenario(BULK_TIME_TIME_PROGRAM)
 
             stats["Proportional"]["pass"] += 1
 
@@ -49,23 +45,15 @@ def run_nightly(e2e_tests):
 
             stats["Proportional"]["fail"] += 1
 
-            print(
-                f"\n❌ PROPORTIONAL_PROGRAM FAILED"
-            )
-
+            print(f"\n❌ PROPORTIONAL_PROGRAM FAILED")
             print(ex)
 
         time.sleep(10)
 
-        # -------------------------------------------------
-        # Bulk By Time
-        # -------------------------------------------------
 
         try:
 
-            e2e_tests.run_scenario(
-                PROPORTIONAL_PROGRAM
-            )
+            e2e_tests.run_scenario(PROPORTIONAL_PROGRAM)
 
             stats["Bulk By Time"]["pass"] += 1
 
@@ -73,23 +61,15 @@ def run_nightly(e2e_tests):
 
             stats["Bulk By Time"]["fail"] += 1
 
-            print(
-                f"\n❌ BULK_TIME_TIME_PROGRAM FAILED"
-            )
-
+            print(f"\n❌ BULK_TIME_TIME_PROGRAM FAILED" )
             print(ex)
 
         time.sleep(10)
 
-        # -------------------------------------------------
-        # Bulk By Quantity
-        # -------------------------------------------------
 
         try:
 
-            e2e_tests.run_scenario(
-                BULK_QUANTITY_TIME_PROGRAM
-            )
+            e2e_tests.run_scenario(BULK_QUANTITY_TIME_PROGRAM)
 
             stats["Bulk By Quantity"]["pass"] += 1
 
@@ -97,23 +77,15 @@ def run_nightly(e2e_tests):
 
             stats["Bulk By Quantity"]["fail"] += 1
 
-            print(
-                f"\n❌ BULK_QUANTITY_TIME_PROGRAM FAILED"
-            )
-
+            print(f"\n❌ BULK_QUANTITY_TIME_PROGRAM FAILED")
             print(ex)
 
         time.sleep(10)
 
-        # -------------------------------------------------
-        # Spread By Time
-        # -------------------------------------------------
 
         try:
 
-            e2e_tests.run_scenario(
-                SPREAD_TIME_PROGRAM
-            )
+            e2e_tests.run_scenario(SPREAD_TIME_PROGRAM)
 
             stats["Spread By Time"]["pass"] += 1
 
@@ -121,17 +93,10 @@ def run_nightly(e2e_tests):
 
             stats["Spread By Time"]["fail"] += 1
 
-            print(
-                f"\n❌ SPREAD_TIME_PROGRAM FAILED"
-            )
-
+            print(f"\n❌ SPREAD_TIME_PROGRAM FAILED")
             print(ex)
 
         time.sleep(10)
-
-        # -------------------------------------------------
-        # Summary
-        # -------------------------------------------------
 
         print("\n")
         print("=" * 100)
@@ -157,8 +122,7 @@ def run_nightly(e2e_tests):
         )
 
         print("=" * 100)
-
-        run_number += 1
+        # run_number += 1
 
 
 

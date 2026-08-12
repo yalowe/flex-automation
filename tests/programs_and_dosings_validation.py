@@ -71,25 +71,17 @@ def validate_results_from_controller(
     ]
 
     if expected_plan is not None:
-        actual_plan = (
-            data["dosing_delivered"]
-            + data["dosing_remaining"]
-        )
+        actual_plan = (data["dosing_delivered"] + data["dosing_remaining"])
 
-        assert verify_tolerance(
-            actual=actual_plan,
-            expected=expected_plan,
-            tolerance_percent=15,
-        ), (
+        assert verify_tolerance(actual=actual_plan,
+            expected=expected_plan, tolerance_percent=15,), (
             "Controller-driven validation failed: "
             f"dosing_plan={actual_plan} "
             f"expected={expected_plan}"
         )
+
     elif enabled_channels:
-        total_dosing = (
-            data["dosing_delivered"]
-            + data["dosing_remaining"]
-        )
+        total_dosing = (data["dosing_delivered"] + data["dosing_remaining"])
 
         assert total_dosing > 0, (
             "Controller-driven validation failed: "

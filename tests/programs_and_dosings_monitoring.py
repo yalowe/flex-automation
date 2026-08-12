@@ -16,7 +16,4 @@ def assert_monitoring_clean(summary: dict, anomaly_blocklist: set[str]):
         for anomaly_type, line in blocked[:10]
     )
 
-    raise AssertionError(
-        "Blocked monitoring anomalies detected:\n"
-        f"{details}"
-    )
+    raise AssertionError("Blocked monitoring anomalies detected:\n" f"{details}")

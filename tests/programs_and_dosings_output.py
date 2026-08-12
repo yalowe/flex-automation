@@ -1,17 +1,11 @@
-def expected_dose_formula_text(
-    channel,
-    expected,
-    config_data,
-    expectations,
-):
+def expected_dose_formula_text(channel, expected, config_data, expectations,):
 
     method = (channel.get("method") or "").strip().lower()
     units = (channel.get("units") or "").strip().lower()
 
     if method == "bulk" and units == "time":
         return (
-            f"{channel.get('flow')} L/h x "
-            f"({channel.get('amount')} min / 60) x 1000"
+            f"{channel.get('flow')} L/h x " f"({channel.get('amount')} min / 60) x 1000"
         )
 
     if method == "bulk" and units == "quant":
@@ -24,19 +18,11 @@ def expected_dose_formula_text(
         )
 
     if method == "spread" and units == "time":
-        return (
-            f"{channel.get('flow')} L/h x "
-            f"({channel.get('amount')} min / 60) x 1000"
-        )
+        return (f"{channel.get('flow')} L/h x " f"({channel.get('amount')} min / 60) x 1000")
 
     return "unsupported or unresolved from current controller inputs"
 
-
-def print_dosing_diagnostics(
-    config_data,
-    expectations,
-    actual_dosing_channels,
-):
+def print_dosing_diagnostics(config_data, expectations, actual_dosing_channels):
 
     active_channels = config_data.get("dosing_channels", {})
     channel_expectations = expectations.get("channel_expectations", {})
@@ -87,23 +73,10 @@ def print_dosing_diagnostics(
     print("=======================================\n")
 
 
-def print_scenario_summary(
-    scenario,
-    config_data,
-    expectations,
-    data,
-    finish_reason,
-    monitoring_summary,
-    shift_id,
-):
+def print_scenario_summary(scenario, config_data, expectations, data, finish_reason, monitoring_summary, shift_id):
 
-    expected_water = (
-        expectations.get("expected_water_report_units")
-    )
-
-    expected_dose = (
-        expectations.get("expected_dosing_report_units")
-    )
+    expected_water = expectations.get("expected_water_report_units")
+    expected_dose = expectations.get("expected_dosing_report_units")
 
     wm_cycle = config_data.get("wm_cycle")
     dm_cycles = [
@@ -114,8 +87,7 @@ def print_scenario_summary(
         if channel.get("enabled")
     ]
 
-    anomaly_count = (
-        monitoring_summary.get("anomaly_count", 0)
+    anomaly_count = (monitoring_summary.get("anomaly_count", 0)
         if monitoring_summary is not None
         else 0
     )
@@ -130,10 +102,7 @@ def print_scenario_summary(
     print(f"Expected Dose   : {expected_dose}")
     print(f"Actual Dose     : {data['dosing_delivered']}")
     print(f"WM Cycle (ms)   : {wm_cycle}")
-    print(
-        "DM Cycle (ms)   : "
-        f"{', '.join(dm_cycles) if dm_cycles else 'none'}"
-    )
+    print("DM Cycle (ms)   : " f"{', '.join(dm_cycles) if dm_cycles else 'none'}")
     print(f"Finish Reason   : {finish_reason}")
     print(f"Anomaly Count   : {anomaly_count}")
     print(f"PASS / FAIL     : {'PASS'}")
@@ -152,8 +121,7 @@ def print_monitoring_summary(summary: dict):
     print(f"Anomalies        : {summary['anomaly_count']}")
 
     if summary["wm_last_counts"]:
-        wm_text = ", ".join(
-            f"WM{wm_id}={count}"
+        wm_text = ", ".join(f"WM{wm_id}={count}"
             for wm_id, count in sorted(summary["wm_last_counts"].items())
         )
         print(f"WM Last Counts   : {wm_text}")
@@ -162,9 +130,6 @@ def print_monitoring_summary(summary: dict):
         print("Anomaly Samples  :")
         for anomaly in summary["anomalies"][:5]:
             timestamp, command, anomaly_type, line = anomaly
-            print(
-                f"- [{timestamp}] ({command}) "
-                f"{anomaly_type} | {line}"
-            )
+            print(f"- [{timestamp}] ({command}) " f"{anomaly_type} | {line}")
 
     print("========================================\n")
