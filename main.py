@@ -8,26 +8,26 @@ from services.flex_config_service import FlexConfigService
 from tests.programs_and_dosings import ProgramsAndDosings
 
 from scenarios import (
-    # BULK_TIME_TIME_PROGRAM,
+    BULK_TIME_TIME_PROGRAM,
     BULK_TIME_QUANTITY_PROGRAM,
-    # BULK_TIME_DEPTH_PROGRAM,
-    # BULK_QUANTITY_TIME_PROGRAM,
-    # BULK_QUANTITY_QUANTITY_PROGRAM,
-    # SPREAD_TIME_TIME_PROGRAM,
-    # SPREAD_QUANTITY_QUANTITY_PROGRAM,
-    # CALCULATED_QUANTITY_PROGRAM,
+    BULK_TIME_DEPTH_PROGRAM,
+    BULK_QUANTITY_TIME_PROGRAM,
+    BULK_QUANTITY_QUANTITY_PROGRAM,
+    SPREAD_TIME_TIME_PROGRAM,
+    SPREAD_QUANTITY_QUANTITY_PROGRAM,
+    CALCULATED_QUANTITY_PROGRAM,
 )
 
 
 SCENARIOS = [
-    # BULK_TIME_TIME_PROGRAM,
+    BULK_TIME_TIME_PROGRAM,
     BULK_TIME_QUANTITY_PROGRAM,
-    # BULK_TIME_DEPTH_PROGRAM,
-    # BULK_QUANTITY_TIME_PROGRAM,
-    # BULK_QUANTITY_QUANTITY_PROGRAM,
-    # SPREAD_TIME_TIME_PROGRAM,
-    # SPREAD_QUANTITY_QUANTITY_PROGRAM,
-    # CALCULATED_QUANTITY_PROGRAM,
+    BULK_TIME_DEPTH_PROGRAM,
+    BULK_QUANTITY_TIME_PROGRAM,
+    BULK_QUANTITY_QUANTITY_PROGRAM,
+    SPREAD_TIME_TIME_PROGRAM,
+    SPREAD_QUANTITY_QUANTITY_PROGRAM,
+    CALCULATED_QUANTITY_PROGRAM,
 ]
 
 
@@ -48,7 +48,7 @@ def print_summary(stats):
 
 
 def run_nightly(e2e_tests):
-    # run_number = 1
+    run_number = 1
 
     stats = {
         scenario.name: {
@@ -58,7 +58,7 @@ def run_nightly(e2e_tests):
         for scenario in SCENARIOS
     }
 
-    while True:
+    while run_number > 0:
         print("=" * 100)
         # print(f"FULL RUN #{run_number}")
 
@@ -94,7 +94,7 @@ def run_nightly(e2e_tests):
 
         print_summary(stats)
 
-        # run_number += 1
+        run_number -= 1
 
 
 def main():
@@ -111,11 +111,7 @@ def main():
     irrigation = IrrigationService(controller)
     config = FlexConfigService(controller)
 
-    e2e_tests = ProgramsAndDosings(
-        irrigation=irrigation,
-        config=config,
-        fail_on_anomalies=True,
-    )
+    e2e_tests = ProgramsAndDosings(irrigation=irrigation, config=config, fail_on_anomalies=True)
 
     try:
         run_nightly(e2e_tests)

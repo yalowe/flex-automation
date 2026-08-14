@@ -67,6 +67,7 @@ class FlexConfigService:
 
             return {
                 "program_type": parts[1] if len(parts) > 1 else None,
+                "program_depth": (parts[3] if len(parts) > 3 else "").strip().lower() == "yes",
                 "program_units": parts[5] if len(parts) > 5 else None,
                 "water_before": self._safe_int(parts[6]) if len(parts) > 6 else 0,
                 "water_after": self._safe_int(parts[7]) if len(parts) > 7 else 0,
@@ -74,6 +75,7 @@ class FlexConfigService:
 
         return {
             "program_type": None,
+            "program_depth": False,
             "program_units": None,
             "water_before": 0,
             "water_after": 0,
@@ -154,6 +156,7 @@ class FlexConfigService:
             "shift_id": program["shift_id"],
             "recipe_id": program["recipe_id"],
             "program_type": program_info["program_type"],
+            "program_depth": program_info["program_depth"],
             "program_units": program_info["program_units"],
             "water_before": program_info["water_before"],
             "water_after": program_info["water_after"],

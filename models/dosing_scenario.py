@@ -10,6 +10,7 @@ class DosingScenario:
     expected_dosing: int | None = None
     expected_remaining: int | None = None
     expected_plan_amount: int | None = None
+    wait_time_sec: int | None = None
 
     water_tolerance_percent: int = 10
     dosing_tolerance_percent: int = 10

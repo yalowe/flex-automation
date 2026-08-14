@@ -58,19 +58,19 @@ class ProgramsAndDosings:
         print(expectations)
         print("==================================")
 
-        print("\n========== PROGRAMS INFO ==========")
+        # print("\n========== PROGRAMS INFO ==========")
         programs_info = self.irrigation.programs_info().response
-        print(programs_info)
+        # print(programs_info)
 
         active_program_id, active_program_state = extract_active_program_state(programs_info)
 
-        print("\n========== SHIFTS INFO ==========")
-        print(self.irrigation.shifts_info().response)
+        # print("\n========== SHIFTS INFO ==========")
+        # print(self.irrigation.shifts_info().response)
 
-        print("\n========== RECIPES INFO ==========")
-        print(self.irrigation.recipes_info().response)
+        # print("\n========== RECIPES INFO ==========")
+        # print(self.irrigation.recipes_info().response)
 
-        print("\n==================================\n")
+        # print("\n==================================\n")
 
         if active_program_state == "Running":
             stop_running_program(
@@ -109,8 +109,6 @@ class ProgramsAndDosings:
         )
 
         print(f"Waiting for completed report (timeout={timeout_sec}s)...")
-
-        print("\n========== RAW REPORT ==========")
 
         completed_report = wait_for_completed_report(
             irrigation=self.irrigation,

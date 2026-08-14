@@ -1,11 +1,27 @@
-def expected_dose_formula_text(channel, expected, config_data, expectations,):
+def expected_dose_formula_text(
+    channel,
+    expected,
+    config_data,
+    expectations,
+):
 
     method = (channel.get("method") or "").strip().lower()
     units = (channel.get("units") or "").strip().lower()
+    program_units = (config_data.get("program_units") or "").strip().lower()
 
     if method == "bulk" and units == "time":
+        configured_runtime_minutes = float(channel.get("amount") or 0)
+        effective_runtime_minutes = expectations.get("dosing_window_minutes")
+
+        if program_units == "time" or effective_runtime_minutes is None:
+            return (
+                f"{channel.get('flow')} L/h x "
+                f"({configured_runtime_minutes:g} min / 60) x 100"
+            )
+
         return (
-            f"{channel.get('flow')} L/h x " f"({channel.get('amount')} min / 60) x 1000"
+            f"{channel.get('flow')} L/h x "
+            f"(min({configured_runtime_minutes:g}, {effective_runtime_minutes:g}) min / 60) x 100"
         )
 
     if method == "bulk" and units == "quant":
@@ -18,9 +34,13 @@ def expected_dose_formula_text(channel, expected, config_data, expectations,):
         )
 
     if method == "spread" and units == "time":
-        return (f"{channel.get('flow')} L/h x " f"({channel.get('amount')} min / 60) x 1000")
+        return (
+            "deliveredTimeSec=valveNumberOnTimes*valveOnTime; "
+            "expected=round((flowLph*deliveredTimeSec/3600)*100)"
+        )
 
     return "unsupported or unresolved from current controller inputs"
+
 
 def print_dosing_diagnostics(config_data, expectations, actual_dosing_channels):
 
@@ -73,7 +93,15 @@ def print_dosing_diagnostics(config_data, expectations, actual_dosing_channels):
     print("=======================================\n")
 
 
-def print_scenario_summary(scenario, config_data, expectations, data, finish_reason, monitoring_summary, shift_id):
+def print_scenario_summary(
+    scenario,
+    config_data,
+    expectations,
+    data,
+    finish_reason,
+    monitoring_summary,
+    shift_id,
+):
 
     expected_water = expectations.get("expected_water_report_units")
     expected_dose = expectations.get("expected_dosing_report_units")
@@ -87,7 +115,8 @@ def print_scenario_summary(scenario, config_data, expectations, data, finish_rea
         if channel.get("enabled")
     ]
 
-    anomaly_count = (monitoring_summary.get("anomaly_count", 0)
+    anomaly_count = (
+        monitoring_summary.get("anomaly_count", 0)
         if monitoring_summary is not None
         else 0
     )
@@ -121,7 +150,8 @@ def print_monitoring_summary(summary: dict):
     print(f"Anomalies        : {summary['anomaly_count']}")
 
     if summary["wm_last_counts"]:
-        wm_text = ", ".join(f"WM{wm_id}={count}"
+        wm_text = ", ".join(
+            f"WM{wm_id}={count}"
             for wm_id, count in sorted(summary["wm_last_counts"].items())
         )
         print(f"WM Last Counts   : {wm_text}")

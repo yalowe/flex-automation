@@ -32,9 +32,9 @@ class FlexCalculator:
             valve_flows: dict[int, float]
     ) -> float:
 
-        total = 0
+        total = 0.0
 
         for valve in valves:
-            total += valve_flows[valve]
+            total += valve_flows.get(valve, 0.0)
 
         return total
