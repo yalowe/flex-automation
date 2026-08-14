@@ -174,6 +174,7 @@ class ExpectationBuilder:
         ratio_l_per_m3 = None
         pulse_interval_sec = None
         pulse_interval_reason = None
+        spread_schedule = None
 
         if method == "bulk" and amount is not None:
             if cls._is_time_unit(units):
@@ -205,13 +206,17 @@ class ExpectationBuilder:
                     expected_report_units = amount
         elif method == "spread" and amount is not None:
             if cls._is_time_unit(units):
-                expected_report_units = cls._spread_time_expected_report_units(
-                    dosing_flow_lph=dosing_flow_lph,
+                spread_schedule = cls._spread_time_schedule(
                     configured_amount_minutes=float(amount),
                     dosing_window_minutes=dosing_window_minutes,
                     min_on_delay_sec=channel.get("min_on_delay_sec", 10),
                     min_off_delay_sec=channel.get("min_off_delay_sec", 10),
                 )
+                # Firmware parity: calculateAndSetDosingChSpreadByTimeOrCalculatedQuantity()
+                # deterministically defines the duty cycle, but the final reported Spread
+                # quantity for the current hydraulic channel is not derivable from the
+                # discovered config alone. Avoid emitting a false controller expectation.
+                expected_report_units = None
             elif cls._is_quantity_unit(units) or cls._is_quantity_unit(program_units):
                 expected_report_units = amount
         elif method in {"prop", "proportional"} and amount is not None:
@@ -263,12 +268,11 @@ class ExpectationBuilder:
             "pulse_interval_sec": pulse_interval_sec,
             "pulse_interval_reason": pulse_interval_reason,
             "wm_pulse_size_liters": wm_pulse_size_liters,
+            "spread_schedule": spread_schedule,
         }
 
-    @classmethod
-    def _spread_time_expected_report_units(
-        cls,
-        dosing_flow_lph: float,
+    @staticmethod
+    def _spread_time_schedule(
         configured_amount_minutes: float,
         dosing_window_minutes,
         min_on_delay_sec,
@@ -280,14 +284,18 @@ class ExpectationBuilder:
         dosing_window_seconds = max(int(dosing_window_minutes * 60), 0)
         time_amount_seconds = max(int(configured_amount_minutes * 60), 0)
 
-        if dosing_window_seconds <= 0 or dosing_flow_lph <= 0:
-            return 0
+        if dosing_window_seconds <= 0:
+            return {
+                "valve_number_on_times": 0,
+                "valve_on_time_seconds": 0,
+                "valve_off_time_seconds": 0,
+                "delivered_time_seconds": 0,
+            }
 
         min_on_delay_sec = max(int(min_on_delay_sec or 0), 10)
         min_off_delay_sec = max(int(min_off_delay_sec or 0), 10)
 
         # Firmware parity: calculateAndSetDosingChSpreadByTimeOrCalculatedQuantity()
-        # with delivered quantity from calculateQuantityFromFlowAndTimeInSeconds().
         if time_amount_seconds >= dosing_window_seconds:
             valve_number_on_times = 1
             valve_on_time = dosing_window_seconds
@@ -310,9 +318,13 @@ class ExpectationBuilder:
                 valve_on_time = total_on_time // valve_number_on_times
 
         delivered_time_seconds = valve_number_on_times * valve_on_time
-        delivered_quantity_liters = (dosing_flow_lph * delivered_time_seconds) / 3600
 
-        return cls.dosing_report_units_from_liters(delivered_quantity_liters)
+        return {
+            "valve_number_on_times": valve_number_on_times,
+            "valve_on_time_seconds": valve_on_time,
+            "valve_off_time_seconds": valve_off_time,
+            "delivered_time_seconds": delivered_time_seconds,
+        }
 
     @classmethod
     def find_inconsistencies(cls, config_data: dict, expectations: dict) -> list[str]:

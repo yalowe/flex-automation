@@ -35,8 +35,8 @@ def expected_dose_formula_text(
 
     if method == "spread" and units == "time":
         return (
-            "deliveredTimeSec=valveNumberOnTimes*valveOnTime; "
-            "expected=round((flowLph*deliveredTimeSec/3600)*100)"
+            "scheduler from calculateAndSetDosingChSpreadByTimeOrCalculatedQuantity(); "
+            "quantity expectation unresolved from config-only flow inputs"
         )
 
     return "unsupported or unresolved from current controller inputs"
