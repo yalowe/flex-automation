@@ -13,12 +13,10 @@ from services.analyzer_profile_service import (
     apply_analyzer_profile as _apply_analyzer_profile,
     validate_analyzer_policy_settings,
 )
-from services.flex_gui_service import FlexGuiSession
+from services.flex_gui_service import FlexGuiSession, run_wm_sync_if_enabled
 from services.irrigation_service import IrrigationService
 from services.monitoring_service import MonitoringService
 from services.flex_config_service import FlexConfigService
-from services.nightly_runner import run_nightly
-from services.wm_sync_service import run_wm_sync_if_enabled
 
 from runner.programs_and_dosings import ProgramsAndDosings
 
@@ -338,7 +336,7 @@ def main(args: argparse.Namespace):
     )
 
     try:
-        run_nightly(e2e_tests, SCENARIOS, run_count=args.runs)
+        e2e_tests.run_all(SCENARIOS, run_count=args.runs)
 
     finally:
         e2e_tests.close()

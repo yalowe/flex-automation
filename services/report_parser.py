@@ -96,6 +96,7 @@ class ReportParser:
             "dosing_delivered": total_dosing,
             "dosing_time": max_dosing_time,
             "dosing_remaining": total_remaining,
+            "dosing_channels": dosing_channels,
         }
 
     @staticmethod

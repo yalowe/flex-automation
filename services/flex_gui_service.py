@@ -7,6 +7,8 @@ import sys
 import time
 from pathlib import Path
 
+from calculators.flex_calculator import FlexCalculator
+
 DEFAULT_WM_CYCLE_MS = "1000"
 DEFAULT_DM_LITERS_PER_PULSE = 1.0
 
@@ -57,10 +59,9 @@ def build_wm_settings_payload(
         wm_id = channel_id + 1
         channel_data = dosing_channels.get(channel_id, {}) or {}
         dm_flow_lph = float(channel_data.get("flow") or 0)
-        dm_cycle = (
-            (dm_liters_per_pulse * 3600000) / dm_flow_lph
-            if dm_flow_lph > 0 and dm_liters_per_pulse > 0
-            else 0
+        dm_cycle = FlexCalculator.dm_cycle_ms(
+            dm_flow_lph,
+            dm_liters_per_pulse,
         )
         payload[str(wm_id)] = {
             "show": bool(channel_data.get("enabled", False)),
@@ -92,6 +93,56 @@ def write_wm_settings(
 ) -> None:
     path = Path(settings_path)
     path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+
+
+def run_wm_sync_if_enabled(args) -> None:
+    if not args.wm_sync:
+        return
+
+    script_path = Path(args.wm_sync_script)
+    settings_path = Path(args.wm_sync_settings)
+
+    if not script_path.exists():
+        msg = f"WM sync script not found: {script_path}"
+        if args.wm_sync_strict:
+            raise RuntimeError(msg)
+        print(f"Warning: {msg}")
+        return
+
+    if not settings_path.exists():
+        msg = f"WM sync settings not found: {settings_path}"
+        if args.wm_sync_strict:
+            raise RuntimeError(msg)
+        print(f"Warning: {msg}")
+        return
+
+    cmd = [
+        sys.executable,
+        str(script_path),
+        "--port",
+        args.port,
+        "--baud",
+        str(args.baud),
+        "--settings",
+        str(settings_path),
+    ]
+
+    print("Running WM sync before test run...")
+    result = subprocess.run(cmd, capture_output=True, text=True)
+
+    if result.stdout.strip():
+        print(result.stdout.strip())
+    if result.stderr.strip():
+        print(result.stderr.strip())
+
+    if result.returncode != 0:
+        msg = "WM sync failed " f"(exit_code={result.returncode})."
+        if args.wm_sync_strict:
+            raise RuntimeError(msg)
+        print(f"Warning: {msg}")
+        return
+
+    print("WM sync completed successfully.")
 
 
 class FlexGuiSession:
