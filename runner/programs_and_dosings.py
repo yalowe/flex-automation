@@ -136,14 +136,6 @@ class ProgramsAndDosings:
             programs_info
         )
 
-        # print("\n========== SHIFTS INFO ==========")
-        # print(self.irrigation.shifts_info().response)
-
-        # print("\n========== RECIPES INFO ==========")
-        # print(self.irrigation.recipes_info().response)
-
-        # print("\n==================================\n")
-
         if active_program_state == "Running":
             stop_running_program(
                 irrigation=self.irrigation,

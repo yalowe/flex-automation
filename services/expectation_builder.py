@@ -360,39 +360,6 @@ class ExpectationBuilder:
         return issues
 
     @classmethod
-    def compare_documented_expectations(
-        cls,
-        expectations: dict,
-        documented_water,
-        documented_dosing,
-        threshold_percent=20,
-    ) -> list[str]:
-        issues = []
-
-        built_water = expectations.get("expected_water_report_units")
-        built_dosing = expectations.get("expected_dosing_report_units")
-
-        if cls._is_large_mismatch(built_water, documented_water, threshold_percent):
-            issues.append(
-                "POTENTIAL TEST DEFINITION ERROR: documented water expectation differs from controller-driven expectation"
-            )
-
-        if cls._is_large_mismatch(built_dosing, documented_dosing, threshold_percent):
-            issues.append(
-                "POTENTIAL TEST DEFINITION ERROR: documented dosing expectation differs from controller-driven expectation"
-            )
-
-        return issues
-
-    @staticmethod
-    def _is_large_mismatch(expected, documented, threshold_percent):
-        if expected is None or documented in (None, 0):
-            return False
-
-        delta = expected * threshold_percent / 100
-        return abs(expected - documented) > delta
-
-    @classmethod
     def water_report_units_from_liters(cls, liters: float) -> int:
         return round(liters * cls.WATER_REPORT_UNITS_PER_LITER)
 

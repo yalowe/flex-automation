@@ -122,8 +122,6 @@ class ReportParser:
 
         return match.group(1)
 
-    _last_report = None
-
     @staticmethod
     def extract_completed_report(report: str) -> str:
         start = report.rfind("Report type: Completed")
@@ -131,8 +129,4 @@ class ReportParser:
         if start == -1:
             raise ValueError("Completed report not found")
 
-        extracted = report[start:]
-        if extracted != ReportParser._last_report:
-            ReportParser._last_report = extracted
-
-        return extracted
+        return report[start:]
