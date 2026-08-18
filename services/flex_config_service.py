@@ -1,57 +1,30 @@
-from parsers.do_parser import DOParser
-from parsers.shift_parser import ShiftParser
-
 from calculators.flex_calculator import FlexCalculator
-from parsers.recipe_parser import RecipeParser
+from flex.response_parser import FlexResponseParser
+from services.flex_gui_service import load_wm_settings
 import re
+from pathlib import Path
 
 
 class FlexConfigService:
 
-    def __init__(self, controller):
+    def __init__(self, controller, wm_settings_path: str | Path | None = None):
         self.controller = controller
+        self.wm_settings_path = wm_settings_path or (
+            Path(__file__).resolve().parents[1] / "Flex_tester" / "wm_settings.json"
+        )
 
-    def get_valve_flows(self):
-        print("Sending irrdomap info")
+    def io_map_info(self):
         result = self.controller.send("irrdomap info")
-
-        return DOParser.parse(result.response)
-
-    def get_dosing_channel_flows(self):
-
-        print("Sending irrdomap info")
-        result = self.controller.send("irrdomap info")
-
-        flows = {}
-
-        for line in result.response.splitlines():
-            parts = [part.strip() for part in line.split("|")]
-
-            if len(parts) < 5:
-                continue
-
-            device_name = parts[1] if len(parts) > 1 else ""
-            nominal_flow = self._safe_int(parts[4]) if len(parts) > 4 else 0
-            match = re.match(r"Dosing CH\s+(\d+)", device_name)
-
-            if not match:
-                continue
-
-            channel_id = int(match.group(1))
-            flows[channel_id] = nominal_flow / 100
-
-        return flows
+        return FlexResponseParser.parse_io_map(result.response)
 
     def shifts_info(self, program_id: int):
 
-        print("Sending shift info")
         result = self.controller.send("shift info")
 
-        return ShiftParser.parse_program(result.response, program_id)
+        return FlexResponseParser.parse_shift_program(result.response, program_id)
 
     def program_info(self, program_id: int):
 
-        print("Sending IrrProg info")
         result = self.controller.send("IrrProg Info")
 
         for line in result.response.splitlines():
@@ -67,6 +40,8 @@ class FlexConfigService:
 
             return {
                 "program_type": parts[1] if len(parts) > 1 else None,
+                "program_depth": (parts[3] if len(parts) > 3 else "").strip().lower()
+                == "yes",
                 "program_units": parts[5] if len(parts) > 5 else None,
                 "water_before": self._safe_int(parts[6]) if len(parts) > 6 else 0,
                 "water_after": self._safe_int(parts[7]) if len(parts) > 7 else 0,
@@ -74,6 +49,7 @@ class FlexConfigService:
 
         return {
             "program_type": None,
+            "program_depth": False,
             "program_units": None,
             "water_before": 0,
             "water_after": 0,
@@ -81,7 +57,6 @@ class FlexConfigService:
 
     def di_map_info(self):
 
-        print("Sending IrrDIMap info")
         result = self.controller.send("IrrDIMap Info")
 
         water_meter_rate = None
@@ -110,13 +85,18 @@ class FlexConfigService:
         }
 
     def get_program_configuration(self, program_id):
-
-        valve_flows = self.get_valve_flows()
-        dosing_channel_flows = self.get_dosing_channel_flows()
+        io_map = self.io_map_info()
+        valve_flows = io_map["valve_flows"]
+        dosing_channel_flows = io_map["dosing_channel_flows"]
 
         program = self.shifts_info(program_id)
         program_info = self.program_info(program_id)
         di_map_info = self.di_map_info()
+        wm_settings = load_wm_settings(self.wm_settings_path)
+        dm_liters_per_pulse = self._positive_float(
+            wm_settings.get("dm_liters_per_pulse"),
+            default=1.0,
+        )
 
         flow = FlexCalculator.flow_from_valves(
             program["valves"],
@@ -125,10 +105,9 @@ class FlexConfigService:
 
         wm_cycle = FlexCalculator.wm_cycle_ms(flow)
 
-        print(print("Sending recipe info"))
         recipe_response = self.controller.send("recipe info")
 
-        recipe = RecipeParser.parse_recipe(
+        recipe = FlexResponseParser.parse_recipe(
             recipe_response.response,
             program["recipe_id"],
         )
@@ -145,8 +124,12 @@ class FlexConfigService:
             dosing_channels[channel_id] = {
                 **channel,
                 "flow": dosing_flow,
-                "dm_cycle": FlexCalculator.dm_cycle_ms(dosing_flow),
+                "dm_cycle": FlexCalculator.dm_cycle_ms(
+                    dosing_flow,
+                    dm_liters_per_pulse,
+                ),
                 "dm_rate": di_map_info["dosing_meter_rates"].get(channel_id),
+                "dm_liters_per_pulse": dm_liters_per_pulse,
             }
 
         return {
@@ -154,6 +137,7 @@ class FlexConfigService:
             "shift_id": program["shift_id"],
             "recipe_id": program["recipe_id"],
             "program_type": program_info["program_type"],
+            "program_depth": program_info["program_depth"],
             "program_units": program_info["program_units"],
             "water_before": program_info["water_before"],
             "water_after": program_info["water_after"],
@@ -175,6 +159,16 @@ class FlexConfigService:
             return int(value)
         except (TypeError, ValueError):
             return 0
+
+    @staticmethod
+    def _positive_float(value, default):
+
+        try:
+            parsed = float(value)
+        except (TypeError, ValueError):
+            return default
+
+        return parsed if parsed > 0 else default
 
     @staticmethod
     def _wm_pulse_size_liters(rate):

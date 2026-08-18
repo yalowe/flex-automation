@@ -1,168 +1,136 @@
-import time
+import argparse
+import os
+from pathlib import Path
+
 from flex.controller import FlexController
-from services.irrigation_service import IrrigationService
+from flex.irrigation import IrrigationService
+from services.flex_gui_service import FlexGuiSession
 from services.monitoring_service import MonitoringService
+from services.flex_config_service import FlexConfigService
 
-from tests.programs_and_dosings import ProgramsAndDosings
-
-from services.flex_config_service import (FlexConfigService)
-
-
+from runner.programs_and_dosings import ProgramsAndDosings
 
 from scenarios import (
     BULK_TIME_TIME_PROGRAM,
+    BULK_TIME_QUANTITY_PROGRAM,
+    BULK_TIME_DEPTH_PROGRAM,
     BULK_QUANTITY_TIME_PROGRAM,
-    PROPORTIONAL_PROGRAM,
-    SPREAD_TIME_PROGRAM,
+    BULK_QUANTITY_QUANTITY_PROGRAM,
+    SPREAD_TIME_TIME_PROGRAM,
+    SPREAD_QUANTITY_QUANTITY_PROGRAM,
+    CALCULATED_QUANTITY_PROGRAM,
 )
 
-def run_nightly(e2e_tests):
+ROOT = Path(__file__).resolve().parent
+WM_SETTINGS_PATH = ROOT / "Flex_tester" / "wm_settings.json"
+FLEX_GUI_LAUNCHER = ROOT / "Flex_tester" / "launch_flex_gui.py"
+FLEX_GUI_PORT = "COM10"
+FLEX_GUI_BAUD = 115200
 
-    # run_number = 1
+SCENARIOS = [
+    BULK_TIME_TIME_PROGRAM,
+    BULK_TIME_QUANTITY_PROGRAM,
+    BULK_TIME_DEPTH_PROGRAM,
+    BULK_QUANTITY_TIME_PROGRAM,
+    BULK_QUANTITY_QUANTITY_PROGRAM,
+    SPREAD_TIME_TIME_PROGRAM,
+    SPREAD_QUANTITY_QUANTITY_PROGRAM,
+    CALCULATED_QUANTITY_PROGRAM,
+]
 
-    stats = {
-        "Bulk By Time": {"pass": 0, "fail": 0},
-        "Bulk By Quantity": {"pass": 0, "fail": 0},
-        "Spread By Time": {"pass": 0, "fail": 0},
-        "Proportional": {"pass": 0, "fail": 0},
-    }
-
-    while True:
-
-        print("\n")
-        print("=" * 100)
-        # print(f"FULL RUN #{run_number}")
-        print("=" * 100)
-
-    
-        try:
-
-            e2e_tests.run_scenario(BULK_TIME_TIME_PROGRAM)
-
-            stats["Proportional"]["pass"] += 1
-
-        except Exception as ex:
-
-            stats["Proportional"]["fail"] += 1
-
-            print(f"\n❌ PROPORTIONAL_PROGRAM FAILED")
-            print(ex)
-
-        time.sleep(10)
-
-
-        try:
-
-            e2e_tests.run_scenario(PROPORTIONAL_PROGRAM)
-
-            stats["Bulk By Time"]["pass"] += 1
-
-        except Exception as ex:
-
-            stats["Bulk By Time"]["fail"] += 1
-
-            print(f"\n❌ BULK_TIME_TIME_PROGRAM FAILED" )
-            print(ex)
-
-        time.sleep(10)
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="FLEX automation runner")
+    parser.add_argument(
+        "--port",
+        default=os.getenv("FLEX_PORT", "COM5"),
+        help="Serial port (default: FLEX_PORT env or COM5)",
+    )
+    parser.add_argument(
+        "--baud",
+        type=int,
+        default=int(os.getenv("FLEX_BAUD", "115200")),
+        help="Serial baud rate (default: FLEX_BAUD env or 115200)",
+    )
+    parser.add_argument(
+        "--runs",
+        type=int,
+        default=int(os.getenv("FLEX_RUNS", "1")),
+        help="Number of full scenario loops (default: FLEX_RUNS env or 1)",
+    )
+    parser.add_argument(
+        "--dry-run-config",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help="Print effective configuration and exit without connecting to hardware",
+    )
+    return parser.parse_args()
 
 
-        try:
+def print_effective_config(args: argparse.Namespace) -> None:
+    print("========== EFFECTIVE CONFIG ==========")
+    print(f"Port                  : {args.port}")
+    print(f"Baud                  : {args.baud}")
+    print(f"Runs                  : {max(0, args.runs)}")
+    print(f"Flex GUI Port         : {FLEX_GUI_PORT}")
+    print(f"Flex GUI Baud         : {FLEX_GUI_BAUD}")
+    print(f"WM Settings           : {WM_SETTINGS_PATH}")
+    print(
+        "Active Scenarios       : "
+        + ", ".join(f"{scenario.name}#{scenario.program_id}" for scenario in SCENARIOS)
+    )
+    print("======================================")
 
-            e2e_tests.run_scenario(BULK_QUANTITY_TIME_PROGRAM)
+def main(args: argparse.Namespace):
+    if args.dry_run_config:
+        print_effective_config(args)
+        return
 
-            stats["Bulk By Quantity"]["pass"] += 1
+    controller = FlexController(args.port, baudrate=args.baud)
 
-        except Exception as ex:
-
-            stats["Bulk By Quantity"]["fail"] += 1
-
-            print(f"\n❌ BULK_QUANTITY_TIME_PROGRAM FAILED")
-            print(ex)
-
-        time.sleep(10)
-
-
-        try:
-
-            e2e_tests.run_scenario(SPREAD_TIME_PROGRAM)
-
-            stats["Spread By Time"]["pass"] += 1
-
-        except Exception as ex:
-
-            stats["Spread By Time"]["fail"] += 1
-
-            print(f"\n❌ SPREAD_TIME_PROGRAM FAILED")
-            print(ex)
-
-        time.sleep(10)
-
-        print("\n")
-        print("=" * 100)
-        print("CURRENT SUMMARY")
-        print("=" * 100)
-
-        print(
-            f"Bulk By Time       : "
-            f"{stats['Bulk By Time']['pass']} PASS | "
-            f"{stats['Bulk By Time']['fail']} FAIL"
-        )
-
-        print(
-            f"Bulk By Quantity   : "
-            f"{stats['Bulk By Quantity']['pass']} PASS | "
-            f"{stats['Bulk By Quantity']['fail']} FAIL"
-        )
-
-        print(
-            f"Spread By Time     : "
-            f"{stats['Spread By Time']['pass']} PASS | "
-            f"{stats['Spread By Time']['fail']} FAIL"
-        )
-
-        print("=" * 100)
-        # run_number += 1
-
-
-
-
-def main():
-
-    controller = FlexController("COM5")
     monitoring = MonitoringService("logs")
     session_dir = monitoring.start_session()
+
     print(f"Monitoring session: {session_dir}")
+
     controller.set_monitoring_service(monitoring)
     controller.connect()
-    # calculate_data = FlexConfigService(controller)
-
 
     irrigation = IrrigationService(controller)
-    config = FlexConfigService(controller)
+    config = FlexConfigService(
+        controller,
+        wm_settings_path=WM_SETTINGS_PATH,
+    )
+    flex_gui_session = FlexGuiSession(
+        launcher_script=FLEX_GUI_LAUNCHER,
+        port=FLEX_GUI_PORT,
+        baud=FLEX_GUI_BAUD,
+        wm_settings_path=WM_SETTINGS_PATH,
+    )
+    print(
+        "Launching Flex GUI early: "
+        f"port={FLEX_GUI_PORT}, baud={FLEX_GUI_BAUD}"
+    )
+    flex_gui_session.launch()
 
     e2e_tests = ProgramsAndDosings(
         irrigation=irrigation,
         config=config,
-        fail_on_anomalies=True,
+        flex_gui_session=flex_gui_session,
+    )
+
+    print(
+        "Run settings: "
+        f"port={args.port}, baud={args.baud}, runs={max(0, args.runs)}, "
+        "fail_on_anomalies=True"
     )
 
     try:
-        run_nightly(e2e_tests)
+        e2e_tests.run_all(SCENARIOS, run_count=args.runs)
 
     finally:
+        e2e_tests.close()
         controller.disconnect()
-
-    # for program_id in range(1, 9):
-
-    #     print()
-    #     print(f"PROGRAM {program_id}")
-
-    #     program_data = calculate_data.get_program_configuration(program_id)
-
-    #     print(program_data)  
-
 
 
 if __name__ == "__main__":
-    main()
+    main(parse_args())

@@ -205,7 +205,19 @@ class MonitoringService:
         if "battery recovery" in lower_line:
             return "battery_recovery_state"
 
-        if re.search(r"\bno flow\b|\blow flow\b|\bhigh flow\b|flow mismatch", lower_line):
+        if (
+            re.search(r"\b(high|low)\s+flow\b", lower_line)
+            and re.search(r"\bnot\s+activated\b", lower_line)
+        ):
+            return None
+
+        if re.search(r"\bno flow\b|flow mismatch", lower_line):
+            return "flow_alarm_pattern"
+
+        if re.search(
+            r"\b(high|low)\s+flow\b.*\b(alarm|alert|fault)\b",
+            lower_line,
+        ):
             return "flow_alarm_pattern"
 
         return None

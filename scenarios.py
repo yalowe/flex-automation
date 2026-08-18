@@ -1,50 +1,45 @@
 from models.dosing_scenario import DosingScenario
 
-
 BULK_TIME_TIME_PROGRAM = DosingScenario(
-    name="Bulk By Time",
+    name="Bulk By Time - Time",
+    program_id=1,
+)
+
+BULK_TIME_QUANTITY_PROGRAM = DosingScenario(
+    name="Bulk By Time - Quantity",
+    program_id=2,
+)
+
+BULK_TIME_DEPTH_PROGRAM = DosingScenario(
+    name="Bulk By Time - Depth",
     program_id=3,
-    wait_time_sec=243,
-    expected_water=6000,
-    expected_dosing=70,
-    expected_remaining=0,
-    water_tolerance_percent=10,
-    dosing_tolerance_percent=10,
-    remaining_tolerance_percent=5,
 )
 
 BULK_QUANTITY_TIME_PROGRAM = DosingScenario(
-    name="Bulk By Quantity",
-    program_id=1,
-    wait_time_sec=183,
-    expected_water=6000,
-    expected_dosing=70,
-    expected_remaining=0,
-    water_tolerance_percent=10,
-    dosing_tolerance_percent=10,
-    remaining_tolerance_percent=5,
+    name="Bulk By Quantity - Time",
+    program_id=4,
+)
+
+BULK_QUANTITY_QUANTITY_PROGRAM = DosingScenario(
+    name="Bulk By Quantity - Quantity",
+    program_id=5,
 )
 
 SPREAD_TIME_PROGRAM = DosingScenario(
     name="Spread By Time",
-    program_id=2,
-    wait_time_sec=183,
-    expected_water=47000,
-    expected_dosing=14500,
-    expected_remaining=0,
-    water_tolerance_percent=10,
-    dosing_tolerance_percent=10,
-    remaining_tolerance_percent=15,
+    program_id=6,
 )
 
-PROPORTIONAL_PROGRAM = DosingScenario(
-    name="Proportional",
+SPREAD_TIME_TIME_PROGRAM = SPREAD_TIME_PROGRAM
+
+SPREAD_QUANTITY_PROGRAM = DosingScenario(
+    name="Spread By Quantity",
+    program_id=7,
+)
+
+SPREAD_QUANTITY_QUANTITY_PROGRAM = SPREAD_QUANTITY_PROGRAM
+
+CALCULATED_QUANTITY_PROGRAM = DosingScenario(
+    name="Calculated Quantity",
     program_id=8,
-    wait_time_sec=729,
-    expected_water=1500,
-    expected_dosing=0,
-    expected_remaining=0,
-    water_tolerance_percent=10,
-    dosing_tolerance_percent=10,
-    remaining_tolerance_percent=15,
 )

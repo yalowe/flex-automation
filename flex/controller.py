@@ -3,7 +3,7 @@ from __future__ import annotations
 import time
 import serial
 
-from flex.models import CommandResult
+from flex.irrigation import CommandResult
 
 
 class FlexController:
@@ -43,10 +43,6 @@ class FlexController:
 
         while self.serial.in_waiting:
             response += self.serial.readline().decode(errors="ignore")
-
-        
-
-        # print("response: \n", response)
 
         success = "Status:OK" in response and "Status:Error" not in response
 
