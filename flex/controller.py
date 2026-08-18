@@ -44,8 +44,6 @@ class FlexController:
         while self.serial.in_waiting:
             response += self.serial.readline().decode(errors="ignore")
 
-        # print("response: \n", response)
-
         success = "Status:OK" in response and "Status:Error" not in response
 
         if self.monitoring_service is not None:

@@ -1,11 +1,8 @@
 import math
-import os
 import re
-import subprocess
 import time
 
 from services.flex_gui_service import FlexGuiSession
-from services.analyzer_policy import resolve_policy
 from services.expectation_builder import ExpectationBuilder
 from flex.response_parser import FlexResponseParser
 from runner.programs_and_dosings_validation import (
@@ -13,65 +10,18 @@ from runner.programs_and_dosings_validation import (
 )
 
 
-def _resolve_analyzer_policy_for_program(program_id: int) -> str:
-    mapping_text = os.getenv("FLEX_HEADLESS_ANALYZER_POLICY_MAP", "")
-    default_policy = os.getenv("FLEX_HEADLESS_ANALYZER_DEFAULT_POLICY", "safe")
-    return resolve_policy(mapping_text, default_policy, program_id)
+BLOCKED_ANOMALIES = {
+    "command_error",
+    "battery_recovery_state",
+    "flow_alarm_pattern",
+}
 
 
-def _run_headless_analyzer_hook(
-    *,
-    scenario_name: str,
-    program_id: int,
-    session_dir: str,
-    anomaly_count: int,
-) -> tuple[bool, str]:
-    """Run optional post-scenario analyzer command from environment.
-
-    Expected environment variables:
-    - FLEX_HEADLESS_ANALYZER_CMD: command template to run (disabled when empty)
-    - FLEX_HEADLESS_ANALYZER_STRICT: when true, non-zero exit fails scenario
-
-    Template placeholders:
-    - {scenario_name}
-    - {program_id}
-    - {session_dir}
-    - {anomaly_count}
-    """
-
-    cmd_template = os.getenv("FLEX_HEADLESS_ANALYZER_CMD", "").strip()
-    if not cmd_template:
-        return True, ""
-
-    cmd = cmd_template.format(
-        scenario_name=scenario_name,
-        program_id=program_id,
-        session_dir=session_dir,
-        anomaly_count=anomaly_count,
-        policy=_resolve_analyzer_policy_for_program(program_id),
-    )
-
-    print(f"Running headless analyzer hook: {cmd}")
-    result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
-
-    if result.stdout.strip():
-        print(result.stdout.strip())
-    if result.stderr.strip():
-        print(result.stderr.strip())
-
-    if result.returncode != 0:
-        return False, (
-            "Headless analyzer hook failed " f"(exit_code={result.returncode})"
-        )
-
-    return True, ""
-
-
-def _assert_monitoring_clean(summary: dict, anomaly_blocklist: set[str]) -> None:
+def _assert_monitoring_clean(summary: dict) -> None:
     blocked = [
         (anomaly_type, line)
         for _, _, anomaly_type, line in summary["anomalies"]
-        if anomaly_type in anomaly_blocklist
+        if anomaly_type in BLOCKED_ANOMALIES
     ]
 
     if not blocked:
@@ -93,7 +43,7 @@ def _wait_until_program_not_running(
 
     while time.time() < timeout:
         programs_info = irrigation.programs_info().response
-        _, active_program_state = extract_active_program_state(programs_info)
+        _, active_program_state = _extract_active_program_state(programs_info)
 
         if active_program_state != "Running":
             print(
@@ -118,7 +68,7 @@ def _skip_all_running_shifts(
 ):
     for skip_index in range(max_shift_skips):
         programs_info = irrigation.programs_info().response
-        active_program_id, active_program_state = extract_active_program_state(
+        active_program_id, active_program_state = _extract_active_program_state(
             programs_info
         )
 
@@ -559,24 +509,12 @@ class ProgramsAndDosings:
         self,
         irrigation,
         config,
-        fail_on_anomalies=False,
-        anomaly_blocklist=None,
         flex_gui_session: FlexGuiSession | None = None,
     ):
 
         self.irrigation = irrigation
         self.config = config
-        self.fail_on_anomalies = fail_on_anomalies
         self.flex_gui_session = flex_gui_session
-        self.anomaly_blocklist = set(
-            anomaly_blocklist
-            if anomaly_blocklist is not None
-            else [
-                "command_error",
-                "battery_recovery_state",
-                "flow_alarm_pattern",
-            ]
-        )
 
     def run_scenario(self, scenario):
 
@@ -601,9 +539,7 @@ class ProgramsAndDosings:
         print(expectations)
         print("==================================")
 
-        # print("\n========== PROGRAMS INFO ==========")
         programs_info = self.irrigation.programs_info().response
-        # print(programs_info)
 
         active_program_id, active_program_state = _extract_active_program_state(
             programs_info
@@ -714,30 +650,12 @@ class ProgramsAndDosings:
                 )
                 _print_monitoring_summary(summary)
 
-        if summary is not None and self.fail_on_anomalies:
+        if summary is not None:
             try:
-                _assert_monitoring_clean(summary, self.anomaly_blocklist)
+                _assert_monitoring_clean(summary)
             except Exception as ex:
                 if scenario_error is None:
                     scenario_error = ex
-
-        if summary is not None:
-            hook_ok, hook_error = _run_headless_analyzer_hook(
-                scenario_name=scenario.name,
-                program_id=scenario.program_id,
-                session_dir=str(getattr(monitoring, "session_dir", "")),
-                anomaly_count=summary.get("anomaly_count", 0),
-            )
-            hook_strict = os.getenv(
-                "FLEX_HEADLESS_ANALYZER_STRICT", ""
-            ).strip().lower() in {
-                "1",
-                "true",
-                "yes",
-                "on",
-            }
-            if not hook_ok and hook_strict and scenario_error is None:
-                scenario_error = RuntimeError(hook_error)
 
         scenario_passed = scenario_error is None
 
