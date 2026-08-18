@@ -17,14 +17,12 @@ class FlexConfigService:
         )
 
     def get_valve_flows(self):
-        # print("Sending irrdomap info")
         result = self.controller.send("irrdomap info")
 
         return DOParser.parse(result.response)
 
     def get_dosing_channel_flows(self):
 
-        # print("Sending irrdomap info")
         result = self.controller.send("irrdomap info")
 
         flows = {}
@@ -49,14 +47,12 @@ class FlexConfigService:
 
     def shifts_info(self, program_id: int):
 
-        # print("Sending shift info")
         result = self.controller.send("shift info")
 
         return ShiftParser.parse_program(result.response, program_id)
 
     def program_info(self, program_id: int):
 
-        # print("Sending IrrProg info")
         result = self.controller.send("IrrProg Info")
 
         for line in result.response.splitlines():
@@ -89,7 +85,6 @@ class FlexConfigService:
 
     def di_map_info(self):
 
-        # print("Sending IrrDIMap info")
         result = self.controller.send("IrrDIMap Info")
 
         water_meter_rate = None
@@ -138,7 +133,6 @@ class FlexConfigService:
 
         wm_cycle = FlexCalculator.wm_cycle_ms(flow)
 
-        # print(print("Sending recipe info"))
         recipe_response = self.controller.send("recipe info")
 
         recipe = RecipeParser.parse_recipe(
