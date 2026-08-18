@@ -25,7 +25,6 @@ class ExpectationBuilder:
     """Build expected controller behavior from runtime-discovered config."""
 
     WATER_REPORT_UNITS_PER_LITER = 100
-    DOSING_REPORT_UNITS_PER_LITER = 100
 
     @staticmethod
     def _is_quantity_unit(unit_value) -> bool:
@@ -360,9 +359,8 @@ class ExpectationBuilder:
         return issues
 
     @classmethod
-    def water_report_units_from_liters(cls, liters: float) -> int:
+    def _report_units_from_liters(cls, liters: float) -> int:
         return round(liters * cls.WATER_REPORT_UNITS_PER_LITER)
 
-    @classmethod
-    def dosing_report_units_from_liters(cls, liters: float) -> int:
-        return round(liters * cls.DOSING_REPORT_UNITS_PER_LITER)
+    water_report_units_from_liters = _report_units_from_liters
+    dosing_report_units_from_liters = _report_units_from_liters

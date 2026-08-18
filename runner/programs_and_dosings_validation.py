@@ -18,6 +18,8 @@ Future configuration-write extension points (not implemented here):
   writes are implemented in this project yet
 """
 
+from services.expectation_builder import ExpectationBuilder
+
 
 def verify_tolerance(
     actual,
@@ -30,15 +32,6 @@ def verify_tolerance(
     return abs(actual - expected) <= delta
 
 
-def _is_quantity_unit(unit_value) -> bool:
-    return (unit_value or "").strip().lower() in {
-        "quant",
-        "qty",
-        "quantity",
-        "depth",
-    }
-
-
 def _is_spread_quantity_channel(channel: dict, program_units: str) -> bool:
     method = (channel.get("method") or "").strip().lower()
     units = (channel.get("units") or "").strip().lower()
@@ -46,7 +39,9 @@ def _is_spread_quantity_channel(channel: dict, program_units: str) -> bool:
     if method != "spread":
         return False
 
-    return _is_quantity_unit(units) or _is_quantity_unit(program_units)
+    return ExpectationBuilder._is_quantity_unit(units) or ExpectationBuilder._is_quantity_unit(
+        program_units
+    )
 
 
 def _validate_program7_spread_quantity_channels(
