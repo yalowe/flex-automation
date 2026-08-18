@@ -24,7 +24,7 @@ if str(REPO_ROOT) not in sys.path:
 
 import main as runner_main
 from main import apply_analyzer_profile, configure_analyzer_policy_hook
-from tests.programs_and_dosings import _resolve_analyzer_policy_for_program
+from runner.programs_and_dosings import _resolve_analyzer_policy_for_program
 
 PYTHON = REPO_ROOT / ".venv" / "Scripts" / "python.exe"
 MAIN = REPO_ROOT / "main.py"

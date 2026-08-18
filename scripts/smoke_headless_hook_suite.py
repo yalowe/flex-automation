@@ -16,7 +16,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from tests.programs_and_dosings import _run_headless_analyzer_hook
+from runner.programs_and_dosings import _run_headless_analyzer_hook
 
 PYTHON = REPO_ROOT / ".venv" / "Scripts" / "python.exe"
 ANALYZER = REPO_ROOT / "scripts" / "headless_monitor_analyzer.py"

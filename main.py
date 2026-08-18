@@ -18,7 +18,7 @@ from services.irrigation_service import IrrigationService
 from services.monitoring_service import MonitoringService
 from services.flex_config_service import FlexConfigService
 
-from tests.programs_and_dosings import ProgramsAndDosings
+from runner.programs_and_dosings import ProgramsAndDosings
 
 from scenarios import (
     BULK_TIME_TIME_PROGRAM,

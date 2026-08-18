@@ -1,6 +1,6 @@
 import time
 
-from tests.programs_and_dosings_parsing import extract_active_program_state
+from runner.programs_and_dosings_parsing import extract_active_program_state
 
 
 def wait_until_program_not_running(

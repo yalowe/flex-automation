@@ -1,7 +1,7 @@
 import time
 
 from services.report_parser import ReportParser
-from tests.programs_and_dosings_parsing import (
+from runner.programs_and_dosings_parsing import (
     extract_active_program_state,
     report_state_is_running,
     start_times_match,

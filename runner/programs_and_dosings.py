@@ -5,23 +5,23 @@ from services.flex_gui_service import FlexGuiSession
 from services.analyzer_policy import resolve_policy
 from services.expectation_builder import ExpectationBuilder
 from services.report_parser import ReportParser
-from tests.programs_and_dosings_parsing import (
+from runner.programs_and_dosings_parsing import (
     estimate_timeout_sec,
     extract_active_program_state,
     extract_report_shift_id,
 )
-from tests.programs_and_dosings_output import (
+from runner.programs_and_dosings_output import (
     print_dosing_diagnostics,
     print_monitoring_summary,
     print_scenario_summary,
 )
-from tests.programs_and_dosings_monitoring import assert_monitoring_clean
-from tests.programs_and_dosings_polling import (
+from runner.programs_and_dosings_monitoring import assert_monitoring_clean
+from runner.programs_and_dosings_polling import (
     wait_for_completed_report,
     wait_for_current_run_start_time,
 )
-from tests.programs_and_dosings_runtime import stop_running_program
-from tests.programs_and_dosings_validation import (
+from runner.programs_and_dosings_runtime import stop_running_program
+from runner.programs_and_dosings_validation import (
     validate_results_from_controller,
 )
 
