@@ -1,0 +1,23 @@
+{
+  "1": {
+    "show": true,
+    "cycle_ms": "4000"
+  },
+  "2": {
+    "show": true,
+    "cycle_ms": "17142.86"
+  },
+  "3": {
+    "show": false,
+    "cycle_ms": "1000"
+  },
+  "4": {
+    "show": false,
+    "cycle_ms": "1000"
+  },
+  "5": {
+    "show": false,
+    "cycle_ms": "1000"
+  },
+  "dm_liters_per_pulse": "0.1"
+}

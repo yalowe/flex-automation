@@ -1,0 +1,5 @@
+FLEX_LOGS/
+**/.venv/
+**/__pycache__/
+**/*.pyc
+Flex_tester/FLEX_LOGS/
