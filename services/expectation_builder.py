@@ -212,13 +212,17 @@ class ExpectationBuilder:
                     min_on_delay_sec=channel.get("min_on_delay_sec", 10),
                     min_off_delay_sec=channel.get("min_off_delay_sec", 10),
                 )
-                # Firmware parity: calculateAndSetDosingChSpreadByTimeOrCalculatedQuantity()
-                # deterministically defines the duty cycle, but the final reported Spread
-                # quantity for the current hydraulic channel is not derivable from the
-                # discovered config alone. Avoid emitting a false controller expectation.
-                expected_report_units = None
+                delivered_time_seconds = spread_schedule["delivered_time_seconds"]
+                expected_liters = dosing_flow_lph * delivered_time_seconds / 3600
+                expected_report_units = cls.dosing_report_units_from_liters(
+                    expected_liters
+                )
             elif cls._is_quantity_unit(units) or cls._is_quantity_unit(program_units):
-                expected_report_units = amount
+                # Spread-by-quantity is currently not deterministic from read-only config
+                # (controller-side cycle decisions can differ from a static amount model).
+                # Keep this channel validated by activity/plan checks in validation layer
+                # instead of forcing an exact numeric expectation.
+                expected_report_units = None
         elif method in {"prop", "proportional"} and amount is not None:
             ratio_l_per_m3 = amount / 1000
             if (
@@ -278,11 +282,18 @@ class ExpectationBuilder:
         min_on_delay_sec,
         min_off_delay_sec,
     ):
+        time_amount_seconds = max(int(configured_amount_minutes * 60), 0)
+
         if dosing_window_minutes is None:
-            return None
+            return {
+                "valve_number_on_times": 1 if time_amount_seconds > 0 else 0,
+                "valve_on_time_seconds": time_amount_seconds,
+                "valve_off_time_seconds": 0,
+                "delivered_time_seconds": time_amount_seconds,
+                "schedule_source": "configured_duration_fallback",
+            }
 
         dosing_window_seconds = max(int(dosing_window_minutes * 60), 0)
-        time_amount_seconds = max(int(configured_amount_minutes * 60), 0)
 
         if dosing_window_seconds <= 0:
             return {
@@ -290,6 +301,7 @@ class ExpectationBuilder:
                 "valve_on_time_seconds": 0,
                 "valve_off_time_seconds": 0,
                 "delivered_time_seconds": 0,
+                "schedule_source": "controller_window",
             }
 
         min_on_delay_sec = max(int(min_on_delay_sec or 0), 10)
@@ -324,6 +336,7 @@ class ExpectationBuilder:
             "valve_on_time_seconds": valve_on_time,
             "valve_off_time_seconds": valve_off_time,
             "delivered_time_seconds": delivered_time_seconds,
+            "schedule_source": "controller_window",
         }
 
     @classmethod

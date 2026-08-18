@@ -34,9 +34,12 @@ def expected_dose_formula_text(
         )
 
     if method == "spread" and units == "time":
+        delivered_time_seconds = (
+            expected.get("spread_schedule", {}).get("delivered_time_seconds")
+        )
         return (
-            "scheduler from calculateAndSetDosingChSpreadByTimeOrCalculatedQuantity(); "
-            "quantity expectation unresolved from config-only flow inputs"
+            f"{channel.get('flow')} L/h x "
+            f"({delivered_time_seconds} sec / 3600) x 100"
         )
 
     return "unsupported or unresolved from current controller inputs"
@@ -101,6 +104,7 @@ def print_scenario_summary(
     finish_reason,
     monitoring_summary,
     shift_id,
+    passed,
 ):
 
     expected_water = expectations.get("expected_water_report_units")
@@ -134,7 +138,7 @@ def print_scenario_summary(
     print("DM Cycle (ms)   : " f"{', '.join(dm_cycles) if dm_cycles else 'none'}")
     print(f"Finish Reason   : {finish_reason}")
     print(f"Anomaly Count   : {anomaly_count}")
-    print(f"PASS / FAIL     : {'PASS'}")
+    print(f"PASS / FAIL     : {'PASS' if passed else 'FAIL'}")
     print("======================================\n")
 
 

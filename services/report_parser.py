@@ -4,35 +4,62 @@ import re
 class ReportParser:
 
     @staticmethod
+    def _extract_int(block: str, label: str) -> int | None:
+        match = re.search(rf"{label}\s*:\s*(-?\d+)", block, re.IGNORECASE)
+        if not match:
+            return None
+
+        return int(match.group(1))
+
+    @staticmethod
+    def _extract_text(block: str, label: str) -> str | None:
+        match = re.search(rf"{label}\s*:\s*([^\r\n|]+)", block, re.IGNORECASE)
+        if not match:
+            return None
+
+        value = match.group(1).strip()
+        return value or None
+
+    @staticmethod
     def parse_dosing_channels(report: str):
-
-        matches = re.finditer(
-            r"Dosing Channel:\s*(\d+),.*?"
-            r"Plan amount:\s*(\d+).*?"
-            r"Method:\s*(\w+).*?"
-            r"Units:\s*(\w+).*?"
-            r"Flow:\s*(\d+).*?"
-            r"delivered quantity:\s*(\d+).*?"
-            r"delivered time:\s*(\d+).*?"
-            r"remain quantity:\s*(\d+).*?"
-            r"remain time:\s*(\d+)",
-            report,
-            re.DOTALL,
-        )
-
         channels = {}
 
-        for match in matches:
-            channel_id = int(match.group(1))
+        channel_blocks = re.finditer(
+            r"Dosing\s+Channel:\s*(\d+)\s*,?(.*?)(?=Dosing\s+Channel:\s*\d+\s*,?|\Z)",
+            report,
+            re.IGNORECASE | re.DOTALL,
+        )
+
+        for block_match in channel_blocks:
+            channel_id = int(block_match.group(1))
+            block = block_match.group(2)
+
+            plan_amount = ReportParser._extract_int(block, "Plan amount")
+            flow = ReportParser._extract_int(block, "Flow")
+            delivered_quantity = ReportParser._extract_int(block, "delivered quantity")
+            delivered_time = ReportParser._extract_int(block, "delivered time")
+            remain_quantity = ReportParser._extract_int(block, "remain quantity")
+            remain_time = ReportParser._extract_int(block, "remain time")
+
+            if (
+                plan_amount is None
+                or flow is None
+                or delivered_quantity is None
+                or delivered_time is None
+                or remain_quantity is None
+                or remain_time is None
+            ):
+                continue
+
             channels[channel_id] = {
-                "plan_amount": int(match.group(2)),
-                "method": match.group(3),
-                "units": match.group(4),
-                "flow": int(match.group(5)),
-                "delivered_quantity": int(match.group(6)),
-                "delivered_time": int(match.group(7)),
-                "remain_quantity": int(match.group(8)),
-                "remain_time": int(match.group(9)),
+                "plan_amount": plan_amount,
+                "method": ReportParser._extract_text(block, "Method"),
+                "units": ReportParser._extract_text(block, "Units"),
+                "flow": flow,
+                "delivered_quantity": delivered_quantity,
+                "delivered_time": delivered_time,
+                "remain_quantity": remain_quantity,
+                "remain_time": remain_time,
             }
 
         return channels
@@ -45,21 +72,21 @@ class ReportParser:
             r"delivered quantity:\s*(\d+).*?"
             r"delivered time:\s*(\d+)",
             report,
-            re.DOTALL,
+            re.IGNORECASE | re.DOTALL,
         )
 
-        dosing_matches = re.findall(
-            r"Dosing Channel:\s*\d+.*?delivered quantity:\s*(\d+).*?delivered time:\s*(\d+).*?remain quantity:\s*(\d+)",
-            report,
-            re.DOTALL,
+        if not water_match:
+            raise ValueError("Irrigation section not found in completed report")
+
+        dosing_channels = ReportParser.parse_dosing_channels(report)
+        total_dosing = sum(
+            channel["delivered_quantity"] for channel in dosing_channels.values()
         )
-
-        total_dosing = sum(int(match[0]) for match in dosing_matches)
-
-        total_remaining = sum(int(match[2]) for match in dosing_matches)
-
+        total_remaining = sum(
+            channel["remain_quantity"] for channel in dosing_channels.values()
+        )
         max_dosing_time = max(
-            (int(match[1]) for match in dosing_matches),
+            (channel["delivered_time"] for channel in dosing_channels.values()),
             default=0,
         )
 
@@ -75,31 +102,31 @@ class ReportParser:
     def parse_finish_reason(report: str):
 
         match = re.search(
-            r"Finish reason:\s*(\w+)",
+            r"Finish reason:\s*([^\r\n]+)",
             report,
+            re.IGNORECASE,
         )
 
         if not match:
             raise ValueError("Finish reason not found")
 
-        return match.group(1)
+        return match.group(1).strip()
 
     @staticmethod
     def parse_actual_start_time(report: str) -> str | None:
 
-        match = re.search(r"Actual started time:\s*([0-9:]+)",report)
+        match = re.search(r"Actual started time:\s*([0-9:]+)", report, re.IGNORECASE)
 
         if not match:
             return None
 
         return match.group(1)
 
-
     _last_report = None
+
     @staticmethod
     def extract_completed_report(report: str) -> str:
         start = report.rfind("Report type: Completed")
-
 
         if start == -1:
             raise ValueError("Completed report not found")

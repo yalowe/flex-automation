@@ -1,0 +1,7 @@
+{
+  "bad-profile": {
+    "policy": "safe",
+    "policy_map": "7-strict,*:safe",
+    "default_policy": "safe"
+  }
+}

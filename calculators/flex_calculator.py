@@ -15,22 +15,19 @@ class FlexCalculator:
         return round(3600000 / flow_lph)
 
     @staticmethod
-    def dm_cycle_ms(flow_lph: float) -> int:
+    def dm_cycle_ms(flow_lph: float, liters_per_pulse: float = 1.0) -> float:
 
-        if flow_lph <= 0:
+        if flow_lph <= 0 or liters_per_pulse <= 0:
             return 0
 
-        return round(3600000 / flow_lph)
+        return round((liters_per_pulse * 3600000) / flow_lph, 2)
 
     @staticmethod
     def total_irrigation_flow(flows_m3h: list[float]) -> float:
         return sum(flows_m3h)
 
     @staticmethod
-    def flow_from_valves(
-            valves: list[int],
-            valve_flows: dict[int, float]
-    ) -> float:
+    def flow_from_valves(valves: list[int], valve_flows: dict[int, float]) -> float:
 
         total = 0.0
 

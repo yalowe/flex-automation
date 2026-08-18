@@ -3,13 +3,18 @@ from parsers.shift_parser import ShiftParser
 
 from calculators.flex_calculator import FlexCalculator
 from parsers.recipe_parser import RecipeParser
+from services.flex_gui_service import load_wm_settings
 import re
+from pathlib import Path
 
 
 class FlexConfigService:
 
-    def __init__(self, controller):
+    def __init__(self, controller, wm_settings_path: str | Path | None = None):
         self.controller = controller
+        self.wm_settings_path = wm_settings_path or (
+            Path(__file__).resolve().parents[1] / "Flex_tester" / "wm_settings.json"
+        )
 
     def get_valve_flows(self):
         # print("Sending irrdomap info")
@@ -67,7 +72,8 @@ class FlexConfigService:
 
             return {
                 "program_type": parts[1] if len(parts) > 1 else None,
-                "program_depth": (parts[3] if len(parts) > 3 else "").strip().lower() == "yes",
+                "program_depth": (parts[3] if len(parts) > 3 else "").strip().lower()
+                == "yes",
                 "program_units": parts[5] if len(parts) > 5 else None,
                 "water_before": self._safe_int(parts[6]) if len(parts) > 6 else 0,
                 "water_after": self._safe_int(parts[7]) if len(parts) > 7 else 0,
@@ -119,6 +125,11 @@ class FlexConfigService:
         program = self.shifts_info(program_id)
         program_info = self.program_info(program_id)
         di_map_info = self.di_map_info()
+        wm_settings = load_wm_settings(self.wm_settings_path)
+        dm_liters_per_pulse = self._positive_float(
+            wm_settings.get("dm_liters_per_pulse"),
+            default=1.0,
+        )
 
         flow = FlexCalculator.flow_from_valves(
             program["valves"],
@@ -147,8 +158,12 @@ class FlexConfigService:
             dosing_channels[channel_id] = {
                 **channel,
                 "flow": dosing_flow,
-                "dm_cycle": FlexCalculator.dm_cycle_ms(dosing_flow),
+                "dm_cycle": FlexCalculator.dm_cycle_ms(
+                    dosing_flow,
+                    dm_liters_per_pulse,
+                ),
                 "dm_rate": di_map_info["dosing_meter_rates"].get(channel_id),
+                "dm_liters_per_pulse": dm_liters_per_pulse,
             }
 
         return {
@@ -178,6 +193,16 @@ class FlexConfigService:
             return int(value)
         except (TypeError, ValueError):
             return 0
+
+    @staticmethod
+    def _positive_float(value, default):
+
+        try:
+            parsed = float(value)
+        except (TypeError, ValueError):
+            return default
+
+        return parsed if parsed > 0 else default
 
     @staticmethod
     def _wm_pulse_size_liters(rate):
