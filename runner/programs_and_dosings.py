@@ -7,7 +7,7 @@ import time
 from services.flex_gui_service import FlexGuiSession
 from services.analyzer_policy import resolve_policy
 from services.expectation_builder import ExpectationBuilder
-from services.report_parser import ReportParser
+from flex.response_parser import FlexResponseParser
 from runner.programs_and_dosings_validation import (
     validate_results_from_controller,
 )
@@ -317,7 +317,7 @@ def _wait_for_current_run_start_time(
             time.sleep(poll_sec)
             continue
 
-        actual_start = ReportParser.parse_actual_start_time(report.response)
+        actual_start = FlexResponseParser.parse_actual_start_time(report.response)
         if actual_start:
             return actual_start
 
@@ -347,15 +347,15 @@ def _wait_for_completed_report(
             time.sleep(5)
             continue
 
-        completed_report = ReportParser.extract_completed_report(report.response)
+        completed_report = FlexResponseParser.extract_completed_report(report.response)
         try:
-            finish_reason = ReportParser.parse_finish_reason(completed_report)
+            finish_reason = FlexResponseParser.parse_finish_reason(completed_report)
         except ValueError:
             time.sleep(5)
             continue
 
         is_finalized = finish_reason in {"Completed", "Stopped"}
-        report_start_time = ReportParser.parse_actual_start_time(completed_report)
+        report_start_time = FlexResponseParser.parse_actual_start_time(completed_report)
         if is_finalized:
             latest_finalized_report = completed_report
 
@@ -657,12 +657,13 @@ class ProgramsAndDosings:
         print(completed_report)
 
         print(
-            "Actual Start Time:", ReportParser.parse_actual_start_time(completed_report)
+            "Actual Start Time:",
+            FlexResponseParser.parse_actual_start_time(completed_report),
         )
 
         print("================================\n")
 
-        finish_reason = ReportParser.parse_finish_reason(completed_report)
+        finish_reason = FlexResponseParser.parse_finish_reason(completed_report)
 
         report_shift_id = _extract_report_shift_id(completed_report)
 
@@ -670,7 +671,7 @@ class ProgramsAndDosings:
             f"Expected finish reason in Completed/Stopped " f"but got '{finish_reason}'"
         )
 
-        data = ReportParser.parse_completed_report(completed_report)
+        data = FlexResponseParser.parse_completed_report(completed_report)
 
         actual_dosing_channels = data["dosing_channels"]
 

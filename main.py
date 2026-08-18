@@ -3,6 +3,7 @@ import os
 from pathlib import Path
 
 from flex.controller import FlexController
+from flex.irrigation import IrrigationService
 from services.analyzer_policy import VALID_ANALYZER_POLICIES
 from services.analyzer_profile_service import (
     configure_analyzer_policy_hook,
@@ -14,7 +15,6 @@ from services.analyzer_profile_service import (
     validate_analyzer_policy_settings,
 )
 from services.flex_gui_service import FlexGuiSession, run_wm_sync_if_enabled
-from services.irrigation_service import IrrigationService
 from services.monitoring_service import MonitoringService
 from services.flex_config_service import FlexConfigService
 

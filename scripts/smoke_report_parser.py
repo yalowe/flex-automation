@@ -5,7 +5,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from services.report_parser import ReportParser
+from flex.response_parser import FlexResponseParser
 
 
 def main() -> None:
@@ -34,10 +34,10 @@ Remain time: 3
 Finish reason: Completed
 """
 
-    channels = ReportParser.parse_dosing_channels(report)
-    summary = ReportParser.parse_completed_report(report)
-    finish = ReportParser.parse_finish_reason(report)
-    start = ReportParser.parse_actual_start_time(report)
+    channels = FlexResponseParser.parse_dosing_channels(report)
+    summary = FlexResponseParser.parse_completed_report(report)
+    finish = FlexResponseParser.parse_finish_reason(report)
+    start = FlexResponseParser.parse_actual_start_time(report)
 
     assert 1 in channels, "Channel 1 should be parsed"
     assert channels[1]["method"] == "Calculated Quantity"

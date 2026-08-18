@@ -1,8 +1,21 @@
-from flex.commands import IrrigationCommand
+from dataclasses import dataclass
+from enum import Enum
+
+
+class IrrigationCommand(Enum):
+    SKIP_SHIFT = 2
+    SKIP_PROGRAM = 3
+    RUN_PROGRAM = 5
+
+
+@dataclass
+class CommandResult:
+    command: str
+    success: bool
+    response: str
 
 
 class IrrigationService:
-
     def __init__(self, controller):
         self.controller = controller
 

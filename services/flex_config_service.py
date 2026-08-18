@@ -1,8 +1,5 @@
-from parsers.do_parser import DOParser
-from parsers.shift_parser import ShiftParser
-
 from calculators.flex_calculator import FlexCalculator
-from parsers.recipe_parser import RecipeParser
+from flex.response_parser import FlexResponseParser
 from services.flex_gui_service import load_wm_settings
 import re
 from pathlib import Path
@@ -18,13 +15,13 @@ class FlexConfigService:
 
     def io_map_info(self):
         result = self.controller.send("irrdomap info")
-        return DOParser.parse_io_map(result.response)
+        return FlexResponseParser.parse_io_map(result.response)
 
     def shifts_info(self, program_id: int):
 
         result = self.controller.send("shift info")
 
-        return ShiftParser.parse_program(result.response, program_id)
+        return FlexResponseParser.parse_shift_program(result.response, program_id)
 
     def program_info(self, program_id: int):
 
@@ -110,7 +107,7 @@ class FlexConfigService:
 
         recipe_response = self.controller.send("recipe info")
 
-        recipe = RecipeParser.parse_recipe(
+        recipe = FlexResponseParser.parse_recipe(
             recipe_response.response,
             program["recipe_id"],
         )
