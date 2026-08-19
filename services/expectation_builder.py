@@ -266,6 +266,7 @@ class ExpectationBuilder:
             "amount": amount,
             "flow_lph": dosing_flow_lph,
             "dm_rate": channel.get("dm_rate"),
+            "dm_pulse_size_liters": channel.get("dm_liters_per_pulse"),
             "expected_report_units": expected_report_units,
             "ratio_l_per_m3": ratio_l_per_m3,
             "pulse_interval_sec": pulse_interval_sec,

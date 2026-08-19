@@ -46,7 +46,13 @@ class MonitoringService:
         self.monitor_events: list[MonitorEvent] = []
         self.device_events: list[ParsedDeviceEvent] = []
         self.anomalies: list[tuple[str, str, str, str]] = []
-        self.event_pattern = re.compile(r"\[(\d{2}:\d{2}:\d{2})\]\s+(valve|wm)\s+(\d+)\s+(.+)")
+        self.event_pattern = re.compile(
+            r"(?:\[(\d{2}:\d{2}:\d{2})\]\s+)?"
+            r"(?:(?:valve|wm)\s+(\d+)\s+(.+)|"
+            r"AppEvent:\s+DO\s+ch:(\d+),\s+new state:([^,]+)|"
+            r"(?:irrProcessTask,\s+)?main waterMeterPulseReceived)",
+            re.IGNORECASE,
+        )
         self.nucleo_time_re = re.compile(r" at (\d{2}:\d{2}:\d{2})")
         self.wm_snapshot_re = re.compile(r"wm(\d+)=(\d+)")
         self.count_re = re.compile(r"count\s+(\d+)")
@@ -232,7 +238,23 @@ class MonitoringService:
         if not match:
             return None
 
-        _, device_type, device_id_text, raw_action = match.groups()
+        timestamp_text, device_id_text, raw_action, do_id_text, do_action = (
+            match.groups()
+        )
+        if do_id_text is not None:
+            device_type = "valve"
+            device_id_text = do_id_text
+            raw_action = f"new state:{do_action.strip()}"
+        elif "watermeterpulsereceived" in line.lower():
+            device_type = "wm"
+            device_id_text = "1"
+            raw_action = line
+        else:
+            device_type = "valve" if "valve" in line.lower() else "wm"
+
+        if raw_action is None:
+            raw_action = line
+
         action_text = raw_action.strip()
 
         nucleo_time = self.nucleo_time_re.search(action_text)

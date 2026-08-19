@@ -287,10 +287,51 @@ def _wait_for_completed_report(
     finalized_mismatch_count = 0
     active_program_state = None
     stale_report_logged = False
+    last_live_snapshot = None
 
     while time.time() < timeout:
         programs_info = irrigation.programs_info().response
         _, active_program_state = _extract_active_program_state(programs_info)
+        running_report = irrigation.running_report(program_id)
+        live = FlexResponseParser.parse_live_report(running_report.response)
+        live_rows = []
+        for channel_id, channel in sorted(live["dosing_channels"].items()):
+            delivered_time = channel["delivered_time"]
+            flow_lph = channel["flow"] / 100
+            dose_by_flow = flow_lph * delivered_time / 3600 * 100
+            live_rows.append(
+                (
+                    channel_id,
+                    channel["flow"],
+                    delivered_time,
+                    channel["delivered_quantity"],
+                    round(dose_by_flow, 1),
+                )
+            )
+        live_snapshot = (
+            live["irrigation_flow_raw"],
+            live["water_delivered"],
+            live["water_time"],
+            tuple(live_rows),
+        )
+        if live_snapshot != last_live_snapshot and live["irrigation_flow_raw"] is not None:
+            print(
+                "LIVE FLOW | "
+                f"irrigation_raw={live['irrigation_flow_raw']} "
+                f"water={live['water_delivered']} units "
+                f"water_time={live['water_time']}s"
+            )
+            for channel_id, flow_raw, delivered_time, delivered_quantity, dose_by_flow in live_rows:
+                print(
+                    "LIVE DOSE | "
+                    f"CH{channel_id} flow_raw={flow_raw} "
+                    f"flow_assumed_lph={flow_raw / 100:.2f} "
+                    f"time={delivered_time}s "
+                    f"dose_by_live_flow={dose_by_flow} units "
+                    f"dose_reported={delivered_quantity} units"
+                )
+            last_live_snapshot = live_snapshot
+
         report = irrigation.completed_report(program_id)
 
         if "Report type: Completed" not in report.response:
