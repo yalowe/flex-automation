@@ -166,6 +166,32 @@ class FlexResponseParser:
         return channels
 
     @classmethod
+    def parse_live_report(cls, report: str) -> dict:
+        irrigation_match = re.search(
+            r"Irrigation Data:\s+Actual started time:.*?"
+            r"Flow:\s*(-?\d+).*?"
+            r"delivered quantity:\s*(\d+).*?"
+            r"delivered time:\s*(\d+)",
+            report,
+            re.IGNORECASE | re.DOTALL,
+        )
+        dosing_channels = cls.parse_dosing_channels(report)
+        if not irrigation_match:
+            return {
+                "irrigation_flow_raw": None,
+                "water_delivered": None,
+                "water_time": None,
+                "dosing_channels": dosing_channels,
+            }
+
+        return {
+            "irrigation_flow_raw": int(irrigation_match.group(1)),
+            "water_delivered": int(irrigation_match.group(2)),
+            "water_time": int(irrigation_match.group(3)),
+            "dosing_channels": dosing_channels,
+        }
+
+    @classmethod
     def parse_completed_report(cls, report: str):
         water_match = re.search(
             r"Irrigation Data:\s+Actual started time:.*?"

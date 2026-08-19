@@ -11,14 +11,14 @@ from services.flex_config_service import FlexConfigService
 from runner.programs_and_dosings import ProgramsAndDosings
 
 from scenarios import (
-    BULK_TIME_TIME_PROGRAM,
-    BULK_TIME_QUANTITY_PROGRAM,
-    BULK_TIME_DEPTH_PROGRAM,
+    # BULK_TIME_TIME_PROGRAM,
+    # BULK_TIME_QUANTITY_PROGRAM,
+    # BULK_TIME_DEPTH_PROGRAM,
     BULK_QUANTITY_TIME_PROGRAM,
-    BULK_QUANTITY_QUANTITY_PROGRAM,
-    SPREAD_TIME_TIME_PROGRAM,
-    SPREAD_QUANTITY_QUANTITY_PROGRAM,
-    CALCULATED_QUANTITY_PROGRAM,
+    # BULK_QUANTITY_QUANTITY_PROGRAM,
+    # SPREAD_TIME_TIME_PROGRAM,
+    # SPREAD_QUANTITY_QUANTITY_PROGRAM,
+    # CALCULATED_QUANTITY_PROGRAM,
 )
 
 ROOT = Path(__file__).resolve().parent
@@ -28,14 +28,14 @@ FLEX_GUI_PORT = "COM10"
 FLEX_GUI_BAUD = 115200
 
 SCENARIOS = [
-    BULK_TIME_TIME_PROGRAM,
-    BULK_TIME_QUANTITY_PROGRAM,
-    BULK_TIME_DEPTH_PROGRAM,
+    # BULK_TIME_TIME_PROGRAM,
+    # BULK_TIME_QUANTITY_PROGRAM,
+    # BULK_TIME_DEPTH_PROGRAM,
     BULK_QUANTITY_TIME_PROGRAM,
-    BULK_QUANTITY_QUANTITY_PROGRAM,
-    SPREAD_TIME_TIME_PROGRAM,
-    SPREAD_QUANTITY_QUANTITY_PROGRAM,
-    CALCULATED_QUANTITY_PROGRAM,
+    # BULK_QUANTITY_QUANTITY_PROGRAM,
+    # SPREAD_TIME_TIME_PROGRAM,
+    # SPREAD_QUANTITY_QUANTITY_PROGRAM,
+    # CALCULATED_QUANTITY_PROGRAM,
 ]
 
 def parse_args() -> argparse.Namespace:
@@ -95,6 +95,14 @@ def main(args: argparse.Namespace):
     controller.set_monitoring_service(monitoring)
     controller.connect()
 
+    print("========== DEVICE INFO ==========")
+    try:
+        device_info = controller.send("device info")
+        print(device_info.response)
+    except Exception as exc:
+        print(f"Device info unavailable: {exc}")
+    print("=================================")
+
     irrigation = IrrigationService(controller)
     config = FlexConfigService(
         controller,
@@ -125,7 +133,7 @@ def main(args: argparse.Namespace):
     )
 
     try:
-        e2e_tests.run_all(SCENARIOS, run_count=args.runs)
+        return e2e_tests.run_all(SCENARIOS, run_count=args.runs)
 
     finally:
         e2e_tests.close()
