@@ -714,7 +714,7 @@ class ProgramsAndDosings:
         if scenario_error is not None:
             raise scenario_error
 
-    def run_all(self, scenarios, run_count: int = 1) -> None:
+    def run_all(self, scenarios, run_count: int = 1) -> dict:
         run_number = max(0, run_count)
         stats = {scenario.name: {"pass": 0, "fail": 0} for scenario in scenarios}
 
@@ -747,6 +747,8 @@ class ProgramsAndDosings:
 
             self._print_summary(stats)
             run_number -= 1
+
+        return stats
 
     @staticmethod
     def _print_summary(stats) -> None:
